@@ -349,6 +349,47 @@ func TestPlanGeneratorGenerate(t *testing.T) {
 			t.Errorf("expected no violations, got %v", result.Violations)
 		}
 	})
+
+	t.Run("succeeds with empty candidate places from search", func(t *testing.T) {
+		llmResp := &clients.LLMPlanResponse{
+			Days: []clients.LLMDayPlan{
+				{
+					DayNumber: 1,
+					Activities: []clients.LLMActivity{
+						{PlaceName: "Some Place", StartTime: "10:00", EndTime: "12:00", DurationMin: 120},
+					},
+				},
+			},
+		}
+
+		places := &stubPlaces{places: []domain.Place{}}
+		llm := &stubLLM{resp: llmResp}
+		repoStub := &stubRepo{}
+
+		pg := usecase.NewPlanGenerator(places, llm, repoStub, newFixedClock(t))
+		req := newDefaultRequest()
+		req.NumDays = 1
+		result, err := pg.Generate(context.Background(), req)
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.Itinerary == nil {
+			t.Fatal("expected itinerary, got nil")
+		}
+		// Activities should have no place links
+		act := result.Itinerary.Days[0].Activities[0]
+		if act.PlaceID != "" {
+			t.Errorf("expected empty PlaceID, got %q", act.PlaceID)
+		}
+		if act.Place != nil {
+			t.Errorf("expected nil Place, got %v", act.Place)
+		}
+		// LLM should still have been called
+		if llm.capturedReq == nil {
+			t.Error("expected LLM to be called even with empty places")
+		}
+	})
 }
 
 func TestPlanGeneratorGenerateErrors(t *testing.T) {
