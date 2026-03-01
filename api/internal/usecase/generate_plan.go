@@ -42,8 +42,9 @@ func NewPlanGenerator(
 
 // GenerateResult holds the result of plan generation.
 type GenerateResult struct {
-	Itinerary  *domain.Itinerary  `json:"itinerary"`
-	Violations []domain.Violation `json:"violations"`
+	Itinerary     *domain.Itinerary     `json:"itinerary"`
+	Violations    []domain.Violation    `json:"violations"`
+	BudgetSummary *domain.BudgetSummary `json:"budget_summary"`
 }
 
 // Generate creates a new itinerary based on the request.
@@ -67,14 +68,16 @@ func (pg *PlanGenerator) Generate(ctx context.Context, req domain.PlanRequest) (
 	}
 
 	// 4. Ask LLM for a draft plan
-	llmResp, err := pg.llm.GeneratePlanSuggestion(ctx, clients.LLMPlanRequest{
-		Destination: req.Destination,
-		NumDays:     req.NumDays,
-		Interests:   req.Preferences.Interests,
-		Budget:      req.Preferences.Budget,
-		TravelStyle: req.Preferences.TravelStyle,
-		PlaceNames:  placeNames,
-	})
+	llmReq := clients.LLMPlanRequest{
+		Destination:    req.Destination,
+		NumDays:        req.NumDays,
+		Interests:      req.Preferences.Interests,
+		Budget:         req.Preferences.Budget,
+		TravelStyle:    req.Preferences.TravelStyle,
+		PlaceNames:     placeNames,
+		TotalBudgetYen: req.Preferences.TotalBudgetYen,
+	}
+	llmResp, err := pg.llm.GeneratePlanSuggestion(ctx, llmReq)
 	if err != nil {
 		return nil, fmt.Errorf("LLM plan generation failed: %w", err)
 	}
@@ -102,11 +105,12 @@ func (pg *PlanGenerator) Generate(ctx context.Context, req domain.PlanRequest) (
 		}
 		for j, llmAct := range llmDay.Activities {
 			act := domain.Activity{
-				Order:       j,
-				StartTime:   llmAct.StartTime,
-				EndTime:     llmAct.EndTime,
-				DurationMin: llmAct.DurationMin,
-				Note:        llmAct.Note,
+				Order:            j,
+				StartTime:        llmAct.StartTime,
+				EndTime:          llmAct.EndTime,
+				DurationMin:      llmAct.DurationMin,
+				Note:             llmAct.Note,
+				EstimatedCostYen: llmAct.EstimatedCostYen,
 			}
 			if p, ok := placeByName[llmAct.PlaceName]; ok {
 				act.PlaceID = p.ID
@@ -124,14 +128,20 @@ func (pg *PlanGenerator) Generate(ctx context.Context, req domain.PlanRequest) (
 		allViolations = append(allViolations, violations...)
 	}
 
-	// 7. Save
+	// 7. Compute budget summary and validate
+	budgetSummary := domain.CalcBudgetSummary(itinerary)
+	budgetViolations := domain.ValidateBudget(budgetSummary, req.Preferences.TotalBudgetYen)
+	allViolations = append(allViolations, budgetViolations...)
+
+	// 8. Save
 	if err := pg.repo.Save(ctx, itinerary); err != nil {
 		return nil, fmt.Errorf("save failed: %w", err)
 	}
 
 	return &GenerateResult{
-		Itinerary:  itinerary,
-		Violations: allViolations,
+		Itinerary:     itinerary,
+		Violations:    allViolations,
+		BudgetSummary: budgetSummary,
 	}, nil
 }
 

@@ -4,8 +4,8 @@ import "fmt"
 
 // Constraint represents a user-defined constraint for the itinerary.
 type Constraint struct {
-	MaxWalkDistanceM  int `json:"max_walk_distance_m"`
-	MaxActivitiesDay  int `json:"max_activities_day"`
+	MaxWalkDistanceM  int    `json:"max_walk_distance_m"`
+	MaxActivitiesDay  int    `json:"max_activities_day"`
 	EarliestStartTime string `json:"earliest_start_time"` // "HH:MM"
 	LatestEndTime     string `json:"latest_end_time"`     // "HH:MM"
 }
@@ -24,20 +24,21 @@ func DefaultConstraint() Constraint {
 type ViolationType string
 
 const (
-	ViolationClosedPlace     ViolationType = "closed_place"
-	ViolationExcessiveWalk   ViolationType = "excessive_walk"
-	ViolationTimeOverlap     ViolationType = "time_overlap"
+	ViolationClosedPlace       ViolationType = "closed_place"
+	ViolationExcessiveWalk     ViolationType = "excessive_walk"
+	ViolationTimeOverlap       ViolationType = "time_overlap"
 	ViolationTooManyActivities ViolationType = "too_many_activities"
-	ViolationOutsideHours    ViolationType = "outside_hours"
-	ViolationImpossibleTravel ViolationType = "impossible_travel"
+	ViolationOutsideHours      ViolationType = "outside_hours"
+	ViolationImpossibleTravel  ViolationType = "impossible_travel"
+	ViolationBudgetExceeded    ViolationType = "budget_exceeded"
 )
 
 // Violation represents a detected problem in the itinerary.
 type Violation struct {
-	Type       ViolationType `json:"type"`
-	DayNumber  int           `json:"day_number"`
-	ActivityIdx int          `json:"activity_idx"`
-	Message    string        `json:"message"`
+	Type        ViolationType `json:"type"`
+	DayNumber   int           `json:"day_number"`
+	ActivityIdx int           `json:"activity_idx"`
+	Message     string        `json:"message"`
 }
 
 // ValidateDayPlan checks a day plan against the given constraint and returns violations.

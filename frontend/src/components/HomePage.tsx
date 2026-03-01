@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { PlanForm } from './PlanForm'
+import { BudgetSummaryDisplay } from './BudgetSummary'
 import type { GenerateResult } from '../types/itinerary'
 
 export function HomePage() {
@@ -21,20 +22,39 @@ export function HomePage() {
               </ul>
             </div>
           )}
-          {result.itinerary.days.map((day) => (
-            <div key={day.day_number} className="day-plan">
-              <h3>Day {day.day_number} - {day.date}</h3>
-              <ul>
-                {day.activities.map((act) => (
-                  <li key={act.order}>
-                    <strong>{act.start_time}–{act.end_time}</strong>{' '}
-                    {act.place?.name ?? act.place_id}
-                    {act.note && <span className="note"> — {act.note}</span>}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          {result.budget_summary && (
+            <BudgetSummaryDisplay
+              summary={result.budget_summary}
+              violations={result.violations}
+            />
+          )}
+          {result.itinerary.days.map((day) => {
+            const dayCost = result.budget_summary?.daily_costs.find(
+              (dc) => dc.day_number === day.day_number
+            )
+            return (
+              <div key={day.day_number} className="day-plan">
+                <h3>Day {day.day_number} - {day.date}</h3>
+                <ul>
+                  {day.activities.map((act) => (
+                    <li key={act.order}>
+                      <strong>{act.start_time}–{act.end_time}</strong>{' '}
+                      {act.place?.name ?? act.place_id}
+                      {act.estimated_cost_yen > 0 && (
+                        <span className="cost"> ({act.estimated_cost_yen.toLocaleString('ja-JP')}円)</span>
+                      )}
+                      {act.note && <span className="note"> — {act.note}</span>}
+                    </li>
+                  ))}
+                </ul>
+                {dayCost && dayCost.cost_yen > 0 && (
+                  <p className="day-cost-subtotal">
+                    小計: {dayCost.cost_yen.toLocaleString('ja-JP')}円
+                  </p>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

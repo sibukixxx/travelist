@@ -47,12 +47,14 @@ export interface Activity {
   duration_min: number
   travel_from_prev?: TravelSegment
   note?: string
+  estimated_cost_yen: number
 }
 
 export interface TravelSegment {
   mode: 'walk' | 'train' | 'bus' | 'taxi' | 'driving'
   duration_min: number
   distance_m: number
+  estimated_cost_yen: number
 }
 
 export interface Violation {
@@ -70,6 +72,7 @@ export interface PlanRequest {
     interests: string[]
     budget: 'budget' | 'moderate' | 'luxury'
     travel_style: 'relaxed' | 'active' | 'balanced'
+    total_budget_yen?: number
   }
   constraint: {
     max_walk_distance_m: number
@@ -79,7 +82,18 @@ export interface PlanRequest {
   }
 }
 
+export interface DayCost {
+  day_number: number
+  cost_yen: number
+}
+
+export interface BudgetSummary {
+  total_cost_yen: number
+  daily_costs: DayCost[]
+}
+
 export interface GenerateResult {
   itinerary: Itinerary
   violations: Violation[]
+  budget_summary: BudgetSummary
 }
