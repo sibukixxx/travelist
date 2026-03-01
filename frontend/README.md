@@ -19,19 +19,19 @@ AI を活用した旅行プラン生成 Web アプリケーションのフロン
 ### 前提条件
 
 - Node.js 22+
-- npm
+- pnpm
 
 ### インストール
 
 ```bash
 cd frontend
-npm install
+pnpm install
 ```
 
 ### 開発サーバー起動
 
 ```bash
-npm run dev
+pnpm dev
 # http://localhost:5173 で起動
 ```
 
@@ -44,14 +44,16 @@ docker build -t travelist-frontend .
 docker run -p 5173:5173 travelist-frontend
 ```
 
-## npm スクリプト
+## pnpm スクリプト
 
 | コマンド | 説明 |
 |---------|------|
-| `npm run dev` | 開発サーバー起動（HMR 有効） |
-| `npm run build` | TypeScript 型チェック + 本番ビルド |
-| `npm run lint` | ESLint によるコード検査 |
-| `npm run preview` | 本番ビルドのプレビュー |
+| `pnpm dev` | 開発サーバー起動（HMR 有効） |
+| `pnpm build` | TypeScript 型チェック + 本番ビルド |
+| `pnpm lint` | ESLint によるコード検査 |
+| `pnpm preview` | 本番ビルドのプレビュー |
+| `pnpm test` | Vitest によるテスト実行 |
+| `pnpm test:watch` | Vitest のウォッチモード（変更検知で自動再実行） |
 
 ## ディレクトリ構成
 
