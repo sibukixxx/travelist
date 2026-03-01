@@ -1,7 +1,8 @@
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { useMutation } from '@tanstack/react-query'
 import { generatePlan } from '../api/client'
 import type { PlanRequest, GenerateResult } from '../types/itinerary'
+import { TagInput } from './TagInput'
 
 interface PlanFormProps {
   onResult: (result: GenerateResult) => void
@@ -11,19 +12,26 @@ interface FormValues {
   destination: string
   num_days: number
   start_date: string
-  interests: string
+  interests: string[]
   budget: 'budget' | 'moderate' | 'luxury'
   travel_style: 'relaxed' | 'active' | 'balanced'
   total_budget_yen: string
 }
 
+const interestSuggestions = [
+  '文化', '歴史', '食事', '自然', 'アート', 'ショッピング',
+  '温泉', '神社仏閣', '写真', 'アウトドア', 'グルメ', '夜景', '建築',
+]
+
+const today = new Date().toISOString().split('T')[0]
+
 export function PlanForm({ onResult }: PlanFormProps) {
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, control, formState: { errors } } = useForm<FormValues>({
     defaultValues: {
       destination: '',
       num_days: 3,
       start_date: '',
-      interests: '',
+      interests: [],
       budget: 'moderate',
       travel_style: 'balanced',
       total_budget_yen: '',
@@ -42,7 +50,7 @@ export function PlanForm({ onResult }: PlanFormProps) {
       num_days: data.num_days,
       start_date: data.start_date,
       preferences: {
-        interests: data.interests.split(',').map((s) => s.trim()).filter(Boolean),
+        interests: data.interests,
         budget: data.budget,
         travel_style: data.travel_style,
         ...(Number.isFinite(budgetNum) && budgetNum > 0 ? { total_budget_yen: budgetNum } : {}),
@@ -83,17 +91,27 @@ export function PlanForm({ onResult }: PlanFormProps) {
         <input
           id="start_date"
           type="date"
-          {...register('start_date', { required: '開始日を入力してください' })}
+          min={today}
+          {...register('start_date', {
+            required: '開始日を入力してください',
+            validate: (v) => v >= today || '過去の日付は選択できません',
+          })}
         />
         {errors.start_date && <span className="error">{errors.start_date.message}</span>}
       </div>
 
       <div className="form-group">
-        <label htmlFor="interests">興味・関心（カンマ区切り）</label>
-        <input
-          id="interests"
-          {...register('interests')}
-          placeholder="例: 文化, 食事, 自然"
+        <label>興味・関心</label>
+        <Controller
+          name="interests"
+          control={control}
+          render={({ field }) => (
+            <TagInput
+              tags={field.value}
+              onChange={field.onChange}
+              suggestions={interestSuggestions}
+            />
+          )}
         />
       </div>
 
