@@ -1,17 +1,26 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { PlanForm } from './PlanForm'
 import { BudgetSummaryDisplay } from './BudgetSummary'
+import { ResultActions } from './ResultActions'
 import type { GenerateResult } from '../types/itinerary'
 
 export function HomePage() {
   const [result, setResult] = useState<GenerateResult | null>(null)
+  const formRef = useRef<HTMLDivElement>(null)
+
+  const handleRegenerate = () => {
+    formRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
 
   return (
     <div>
-      <PlanForm onResult={setResult} />
+      <div ref={formRef}>
+        <PlanForm onResult={setResult} />
+      </div>
       {result && (
         <div className="result">
           <h2>{result.itinerary.title}</h2>
+          <ResultActions result={result} onRegenerate={handleRegenerate} />
           {result.violations.length > 0 && (
             <div className="violations">
               <h3>注意事項</h3>

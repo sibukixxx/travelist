@@ -17,4 +17,10 @@ describe('HomePage', () => {
     renderWithProviders(<HomePage />)
     expect(screen.getByRole('button', { name: 'プランを生成' })).toBeInTheDocument()
   })
+
+  it('does not show result action buttons when there is no result', () => {
+    renderWithProviders(<HomePage />)
+    expect(screen.queryByRole('button', { name: 'JSONダウンロード' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'プランを再生成' })).not.toBeInTheDocument()
+  })
 })
