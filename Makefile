@@ -42,7 +42,7 @@ test-frontend: frontend/node_modules
 lint: lint-api lint-frontend
 
 lint-api:
-	cd api && go vet ./...
+	cd api && GOCACHE=/tmp/go-build-cache go vet ./...
 
 lint-frontend: frontend/node_modules
 	cd frontend && npm run lint
