@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/sibukixxx/travelist/api/internal/apperror"
 	"github.com/sibukixxx/travelist/api/internal/domain"
 	"github.com/sibukixxx/travelist/api/internal/usecase"
 )
@@ -27,7 +28,7 @@ func (h *PlanHandler) GeneratePlan(w http.ResponseWriter, r *http.Request) {
 
 	var req domain.PlanRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		handleError(w, apperror.NewBadRequest("invalid request body"))
 		return
 	}
 
@@ -38,7 +39,7 @@ func (h *PlanHandler) GeneratePlan(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.generator.Generate(r.Context(), req)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		handleError(w, err)
 		return
 	}
 

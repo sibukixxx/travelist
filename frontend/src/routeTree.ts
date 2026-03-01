@@ -7,8 +7,9 @@ export const rootRoute = createRootRoute({
 
 // Lazy import to avoid circular dependency
 import { indexRoute } from './routes/index'
+import { registerRoute } from './routes/register'
 
-const routeTree = rootRoute.addChildren([indexRoute])
+const routeTree = rootRoute.addChildren([indexRoute, registerRoute])
 
 export const router = createRouter({ routeTree })
 
