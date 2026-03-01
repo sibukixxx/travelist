@@ -139,6 +139,37 @@ button:disabled {
   margin-top: 2rem;
 }
 
+.budget-summary {
+  background: #2a2a3a;
+  border: 1px solid #646cff;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.total-cost {
+  font-size: 1.1rem;
+}
+
+.budget-over {
+  color: #ff6b6b;
+  font-weight: 600;
+}
+
+.cost {
+  color: #8b8bff;
+  font-size: 0.9rem;
+}
+
+.day-cost-subtotal {
+  text-align: right;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid #444;
+  padding-top: 0.5rem;
+}
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
@@ -167,5 +198,16 @@ button:disabled {
   .violations {
     background: #fff0f0;
     border-color: #ff6b6b;
+  }
+  .budget-summary {
+    background: #f0f0ff;
+    border-color: #646cff;
+  }
+  .cost {
+    color: #4a4adf;
+  }
+  .day-cost-subtotal {
+    color: rgba(0, 0, 0, 0.6);
+    border-top-color: #ddd;
   }
 }

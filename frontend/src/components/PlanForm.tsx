@@ -14,6 +14,7 @@ interface FormValues {
   interests: string
   budget: 'budget' | 'moderate' | 'luxury'
   travel_style: 'relaxed' | 'active' | 'balanced'
+  total_budget_yen: string
 }
 
 export function PlanForm({ onResult }: PlanFormProps) {
@@ -25,6 +26,7 @@ export function PlanForm({ onResult }: PlanFormProps) {
       interests: '',
       budget: 'moderate',
       travel_style: 'balanced',
+      total_budget_yen: '',
     },
   })
 
@@ -34,6 +36,7 @@ export function PlanForm({ onResult }: PlanFormProps) {
   })
 
   const onSubmit = (data: FormValues) => {
+    const budgetNum = parseInt(data.total_budget_yen, 10)
     const req: PlanRequest = {
       destination: data.destination,
       num_days: data.num_days,
@@ -42,6 +45,7 @@ export function PlanForm({ onResult }: PlanFormProps) {
         interests: data.interests.split(',').map((s) => s.trim()).filter(Boolean),
         budget: data.budget,
         travel_style: data.travel_style,
+        ...(Number.isFinite(budgetNum) && budgetNum > 0 ? { total_budget_yen: budgetNum } : {}),
       },
       constraint: {
         max_walk_distance_m: 2000,
@@ -100,6 +104,17 @@ export function PlanForm({ onResult }: PlanFormProps) {
           <option value="moderate">普通</option>
           <option value="luxury">贅沢</option>
         </select>
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="total_budget_yen">予算上限（円、任意）</label>
+        <input
+          id="total_budget_yen"
+          type="number"
+          {...register('total_budget_yen')}
+          placeholder="例: 50000"
+          min="0"
+        />
       </div>
 
       <div className="form-group">

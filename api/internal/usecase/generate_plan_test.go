@@ -390,6 +390,167 @@ func TestPlanGeneratorGenerate(t *testing.T) {
 			t.Error("expected LLM to be called even with empty places")
 		}
 	})
+
+	t.Run("maps LLM cost to BudgetSummary", func(t *testing.T) {
+		places := &stubPlaces{
+			places: []domain.Place{
+				{ID: "p1", Name: "Temple"},
+				{ID: "p2", Name: "Cafe"},
+			},
+		}
+		llm := &stubLLM{
+			resp: &clients.LLMPlanResponse{
+				Days: []clients.LLMDayPlan{
+					{
+						DayNumber: 1,
+						Activities: []clients.LLMActivity{
+							{PlaceName: "Temple", StartTime: "09:00", EndTime: "10:30", DurationMin: 90, EstimatedCostYen: 500},
+							{PlaceName: "Cafe", StartTime: "11:00", EndTime: "12:00", DurationMin: 60, EstimatedCostYen: 1200},
+						},
+					},
+				},
+			},
+		}
+		repoStub := &stubRepo{}
+		pg := usecase.NewPlanGenerator(places, llm, repoStub, newFixedClock(t))
+
+		result, err := pg.Generate(context.Background(), domain.PlanRequest{
+			Destination: "Kyoto",
+			NumDays:     1,
+			StartDate:   "2026-03-01",
+			Preferences: domain.Preferences{Budget: "moderate"},
+			Constraint:  domain.DefaultConstraint(),
+		})
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.BudgetSummary == nil {
+			t.Fatal("expected BudgetSummary, got nil")
+		}
+		if result.BudgetSummary.TotalCostYen != 1700 {
+			t.Errorf("expected total 1700, got %d", result.BudgetSummary.TotalCostYen)
+		}
+	})
+
+	t.Run("adds ViolationBudgetExceeded when over budget", func(t *testing.T) {
+		places := &stubPlaces{
+			places: []domain.Place{{ID: "p1", Name: "Luxury Hotel"}},
+		}
+		llm := &stubLLM{
+			resp: &clients.LLMPlanResponse{
+				Days: []clients.LLMDayPlan{
+					{
+						DayNumber: 1,
+						Activities: []clients.LLMActivity{
+							{PlaceName: "Luxury Hotel", StartTime: "09:00", EndTime: "10:00", DurationMin: 60, EstimatedCostYen: 50000},
+						},
+					},
+				},
+			},
+		}
+		repoStub := &stubRepo{}
+		pg := usecase.NewPlanGenerator(places, llm, repoStub, newFixedClock(t))
+
+		budget := 30000
+		result, err := pg.Generate(context.Background(), domain.PlanRequest{
+			Destination: "Tokyo",
+			NumDays:     1,
+			StartDate:   "2026-03-01",
+			Preferences: domain.Preferences{Budget: "luxury", TotalBudgetYen: &budget},
+			Constraint:  domain.DefaultConstraint(),
+		})
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		hasBudgetViolation := false
+		for _, v := range result.Violations {
+			if v.Type == domain.ViolationBudgetExceeded {
+				hasBudgetViolation = true
+				break
+			}
+		}
+		if !hasBudgetViolation {
+			t.Error("expected ViolationBudgetExceeded, but not found")
+		}
+	})
+
+	t.Run("no budget violation when TotalBudgetYen is nil", func(t *testing.T) {
+		places := &stubPlaces{
+			places: []domain.Place{{ID: "p1", Name: "Museum"}},
+		}
+		llm := &stubLLM{
+			resp: &clients.LLMPlanResponse{
+				Days: []clients.LLMDayPlan{
+					{
+						DayNumber: 1,
+						Activities: []clients.LLMActivity{
+							{PlaceName: "Museum", StartTime: "09:00", EndTime: "10:00", DurationMin: 60, EstimatedCostYen: 99999},
+						},
+					},
+				},
+			},
+		}
+		repoStub := &stubRepo{}
+		pg := usecase.NewPlanGenerator(places, llm, repoStub, newFixedClock(t))
+
+		result, err := pg.Generate(context.Background(), domain.PlanRequest{
+			Destination: "Osaka",
+			NumDays:     1,
+			StartDate:   "2026-03-01",
+			Preferences: domain.Preferences{Budget: "moderate"},
+			Constraint:  domain.DefaultConstraint(),
+		})
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		for _, v := range result.Violations {
+			if v.Type == domain.ViolationBudgetExceeded {
+				t.Error("unexpected ViolationBudgetExceeded when TotalBudgetYen is nil")
+			}
+		}
+	})
+
+	t.Run("maps EstimatedCostYen from LLM to Activity", func(t *testing.T) {
+		places := &stubPlaces{
+			places: []domain.Place{{ID: "p1", Name: "Shrine"}},
+		}
+		llm := &stubLLM{
+			resp: &clients.LLMPlanResponse{
+				Days: []clients.LLMDayPlan{
+					{
+						DayNumber: 1,
+						Activities: []clients.LLMActivity{
+							{PlaceName: "Shrine", StartTime: "09:00", EndTime: "10:00", DurationMin: 60, EstimatedCostYen: 300},
+						},
+					},
+				},
+			},
+		}
+		repoStub := &stubRepo{}
+		pg := usecase.NewPlanGenerator(places, llm, repoStub, newFixedClock(t))
+
+		result, err := pg.Generate(context.Background(), domain.PlanRequest{
+			Destination: "Nara",
+			NumDays:     1,
+			StartDate:   "2026-03-01",
+			Preferences: domain.Preferences{Budget: "budget"},
+			Constraint:  domain.DefaultConstraint(),
+		})
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		got := result.Itinerary.Days[0].Activities[0].EstimatedCostYen
+		if diff := cmp.Diff(300, got); diff != "" {
+			t.Errorf("EstimatedCostYen mismatch (-want +got):\n%s", diff)
+		}
+	})
 }
 
 func TestPlanGeneratorGenerateErrors(t *testing.T) {
