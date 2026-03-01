@@ -1,4 +1,4 @@
-package usecase
+package usecase_test
 
 import (
 	"context"
@@ -7,70 +7,75 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/sibukixxx/travelist/api/internal/domain"
 	"github.com/sibukixxx/travelist/api/internal/infra/clients"
 	"github.com/sibukixxx/travelist/api/internal/infra/clock"
+	"github.com/sibukixxx/travelist/api/internal/usecase"
 )
 
-// --- Fakes ---
+// --- Test Doubles (Stubs) ---
 
-type fakePlaces struct {
-	places []domain.Place
-	err    error
+type stubPlaces struct {
+	places        []domain.Place
+	err           error
+	capturedQuery string
 }
 
-func (f *fakePlaces) SearchPlaces(_ context.Context, _ string, _, _ float64) ([]domain.Place, error) {
-	return f.places, f.err
+func (s *stubPlaces) SearchPlaces(ctx context.Context, query string, lat, lng float64) ([]domain.Place, error) {
+	s.capturedQuery = query
+	return s.places, s.err
 }
 
-func (f *fakePlaces) GetPlaceDetails(_ context.Context, _ string) (*domain.Place, error) {
+func (s *stubPlaces) GetPlaceDetails(ctx context.Context, placeID string) (*domain.Place, error) {
 	return nil, nil
 }
 
-type fakeLLM struct {
-	resp *clients.LLMPlanResponse
-	err  error
+type stubLLM struct {
+	resp        *clients.LLMPlanResponse
+	err         error
+	capturedReq *clients.LLMPlanRequest
 }
 
-func (f *fakeLLM) GeneratePlanSuggestion(_ context.Context, _ clients.LLMPlanRequest) (*clients.LLMPlanResponse, error) {
-	return f.resp, f.err
+func (s *stubLLM) GeneratePlanSuggestion(ctx context.Context, req clients.LLMPlanRequest) (*clients.LLMPlanResponse, error) {
+	s.capturedReq = &req
+	return s.resp, s.err
 }
 
-func (f *fakeLLM) SuggestFix(_ context.Context, _ clients.LLMFixRequest) (*clients.LLMPlanResponse, error) {
+func (s *stubLLM) SuggestFix(ctx context.Context, req clients.LLMFixRequest) (*clients.LLMPlanResponse, error) {
 	return nil, nil
 }
 
-type fakeRepo struct {
+type stubRepo struct {
 	saved *domain.Itinerary
 	err   error
 }
 
-func (f *fakeRepo) Save(_ context.Context, it *domain.Itinerary) error {
-	f.saved = it
-	return f.err
+func (s *stubRepo) Save(ctx context.Context, itinerary *domain.Itinerary) error {
+	s.saved = itinerary
+	return s.err
 }
 
-func (f *fakeRepo) FindByID(_ context.Context, _ string) (*domain.Itinerary, error) {
+func (s *stubRepo) FindByID(ctx context.Context, id string) (*domain.Itinerary, error) {
 	return nil, nil
 }
 
-func (f *fakeRepo) List(_ context.Context) ([]*domain.Itinerary, error) {
+func (s *stubRepo) List(ctx context.Context) ([]*domain.Itinerary, error) {
 	return nil, nil
 }
 
-func (f *fakeRepo) Delete(_ context.Context, _ string) error {
+func (s *stubRepo) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
 // --- Helpers ---
 
-var fixedTime = time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC)
-
-func newTestGenerator(places *fakePlaces, llm *fakeLLM, repository *fakeRepo) *PlanGenerator {
-	return NewPlanGenerator(places, llm, repository, clock.FixedClock{Time: fixedTime})
+func newFixedClock(t *testing.T) clock.FixedClock {
+	t.Helper()
+	return clock.FixedClock{Time: time.Date(2026, 3, 1, 12, 0, 0, 0, time.UTC)}
 }
 
-func validRequest() domain.PlanRequest {
+func newDefaultRequest() domain.PlanRequest {
 	return domain.PlanRequest{
 		Destination: "京都",
 		NumDays:     2,
@@ -84,28 +89,27 @@ func validRequest() domain.PlanRequest {
 	}
 }
 
-func samplePlaces() []domain.Place {
+func newSamplePlaces() []domain.Place {
 	return []domain.Place{
-		{ID: "p1", Name: "金閣寺", Rating: 4.5},
-		{ID: "p2", Name: "伏見稲荷大社", Rating: 4.7},
-		{ID: "p3", Name: "錦市場", Rating: 4.3},
+		{ID: "place-1", Name: "金閣寺", Lat: 35.0394, Lng: 135.7292},
+		{ID: "place-2", Name: "伏見稲荷大社", Lat: 34.9671, Lng: 135.7727},
 	}
 }
 
-func sampleLLMResponse() *clients.LLMPlanResponse {
+func newSampleLLMResponse() *clients.LLMPlanResponse {
 	return &clients.LLMPlanResponse{
 		Days: []clients.LLMDayPlan{
 			{
 				DayNumber: 1,
 				Activities: []clients.LLMActivity{
-					{PlaceName: "金閣寺", StartTime: "09:00", EndTime: "11:00", DurationMin: 120, Note: "朝一番で訪問"},
-					{PlaceName: "錦市場", StartTime: "12:00", EndTime: "14:00", DurationMin: 120, Note: "昼食"},
+					{PlaceName: "金閣寺", StartTime: "09:00", EndTime: "11:00", DurationMin: 120, Note: "朝一で訪問"},
+					{PlaceName: "伏見稲荷大社", StartTime: "13:00", EndTime: "15:00", DurationMin: 120, Note: "千本鳥居を散策"},
 				},
 			},
 			{
 				DayNumber: 2,
 				Activities: []clients.LLMActivity{
-					{PlaceName: "伏見稲荷大社", StartTime: "09:00", EndTime: "12:00", DurationMin: 180, Note: "千本鳥居"},
+					{PlaceName: "Unknown Spot", StartTime: "10:00", EndTime: "12:00", DurationMin: 120, Note: "隠れスポット"},
 				},
 			},
 		},
@@ -114,352 +118,338 @@ func sampleLLMResponse() *clients.LLMPlanResponse {
 
 // --- Tests ---
 
-func TestGenerate_Success(t *testing.T) {
-	// Arrange
-	places := &fakePlaces{places: samplePlaces()}
-	llm := &fakeLLM{resp: sampleLLMResponse()}
-	repository := &fakeRepo{}
-	pg := newTestGenerator(places, llm, repository)
+func TestPlanGeneratorGenerate(t *testing.T) {
+	t.Run("returns itinerary with correctly mapped places and dates", func(t *testing.T) {
+		places := &stubPlaces{places: newSamplePlaces()}
+		llm := &stubLLM{resp: newSampleLLMResponse()}
+		repoStub := &stubRepo{}
+		clk := newFixedClock(t)
 
-	// Act
-	result, err := pg.Generate(context.Background(), validRequest())
-
-	// Assert
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if result.Itinerary == nil {
-		t.Fatal("expected itinerary, got nil")
-	}
-	it := result.Itinerary
-	if it.Destination != "京都" {
-		t.Errorf("destination = %q, want %q", it.Destination, "京都")
-	}
-	if len(it.Days) != 2 {
-		t.Fatalf("days = %d, want 2", len(it.Days))
-	}
-	if len(it.Days[0].Activities) != 2 {
-		t.Errorf("day1 activities = %d, want 2", len(it.Days[0].Activities))
-	}
-	if len(it.Days[1].Activities) != 1 {
-		t.Errorf("day2 activities = %d, want 1", len(it.Days[1].Activities))
-	}
-	// Verify itinerary was saved
-	if repository.saved == nil {
-		t.Error("expected itinerary to be saved")
-	}
-}
-
-func TestGenerate_TitleFormat(t *testing.T) {
-	// Arrange
-	places := &fakePlaces{places: samplePlaces()}
-	llm := &fakeLLM{resp: sampleLLMResponse()}
-	pg := newTestGenerator(places, llm, &fakeRepo{})
-
-	// Act
-	result, err := pg.Generate(context.Background(), validRequest())
-
-	// Assert
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	want := "京都 2日間の旅"
-	if result.Itinerary.Title != want {
-		t.Errorf("title = %q, want %q", result.Itinerary.Title, want)
-	}
-}
-
-func TestGenerate_DateCalculation(t *testing.T) {
-	// Arrange
-	places := &fakePlaces{places: samplePlaces()}
-	llm := &fakeLLM{resp: sampleLLMResponse()}
-	pg := newTestGenerator(places, llm, &fakeRepo{})
-
-	// Act
-	result, err := pg.Generate(context.Background(), validRequest())
-
-	// Assert
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	it := result.Itinerary
-	wantStart := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
-	wantEnd := time.Date(2026, 4, 2, 0, 0, 0, 0, time.UTC)
-	if !it.StartDate.Equal(wantStart) {
-		t.Errorf("start_date = %v, want %v", it.StartDate, wantStart)
-	}
-	if !it.EndDate.Equal(wantEnd) {
-		t.Errorf("end_date = %v, want %v", it.EndDate, wantEnd)
-	}
-	// Day dates
-	if !it.Days[0].Date.Equal(wantStart) {
-		t.Errorf("day1 date = %v, want %v", it.Days[0].Date, wantStart)
-	}
-	if !it.Days[1].Date.Equal(wantEnd) {
-		t.Errorf("day2 date = %v, want %v", it.Days[1].Date, wantEnd)
-	}
-}
-
-func TestGenerate_TimestampsUseFixedClock(t *testing.T) {
-	// Arrange
-	places := &fakePlaces{places: samplePlaces()}
-	llm := &fakeLLM{resp: sampleLLMResponse()}
-	pg := newTestGenerator(places, llm, &fakeRepo{})
-
-	// Act
-	result, err := pg.Generate(context.Background(), validRequest())
-
-	// Assert
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !result.Itinerary.CreatedAt.Equal(fixedTime) {
-		t.Errorf("created_at = %v, want %v", result.Itinerary.CreatedAt, fixedTime)
-	}
-	if !result.Itinerary.UpdatedAt.Equal(fixedTime) {
-		t.Errorf("updated_at = %v, want %v", result.Itinerary.UpdatedAt, fixedTime)
-	}
-}
-
-func TestGenerate_PlaceMatching(t *testing.T) {
-	// Arrange
-	places := &fakePlaces{places: samplePlaces()}
-	llm := &fakeLLM{resp: sampleLLMResponse()}
-	pg := newTestGenerator(places, llm, &fakeRepo{})
-
-	// Act
-	result, err := pg.Generate(context.Background(), validRequest())
-
-	// Assert
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	act0 := result.Itinerary.Days[0].Activities[0]
-	if act0.PlaceID != "p1" {
-		t.Errorf("activity 0 place_id = %q, want %q", act0.PlaceID, "p1")
-	}
-	if act0.Place == nil || act0.Place.Name != "金閣寺" {
-		t.Errorf("activity 0 place name = %v, want 金閣寺", act0.Place)
-	}
-}
-
-func TestGenerate_UnknownPlaceNotLinked(t *testing.T) {
-	// Arrange: LLM returns a place name that doesn't exist in candidates
-	places := &fakePlaces{places: samplePlaces()}
-	llm := &fakeLLM{resp: &clients.LLMPlanResponse{
-		Days: []clients.LLMDayPlan{
-			{
-				DayNumber: 1,
-				Activities: []clients.LLMActivity{
-					{PlaceName: "存在しない場所", StartTime: "09:00", EndTime: "11:00", DurationMin: 120},
-				},
-			},
-		},
-	}}
-	req := validRequest()
-	req.NumDays = 1
-	pg := newTestGenerator(places, llm, &fakeRepo{})
-
-	// Act
-	result, err := pg.Generate(context.Background(), req)
-
-	// Assert
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	act := result.Itinerary.Days[0].Activities[0]
-	if act.PlaceID != "" {
-		t.Errorf("expected empty place_id for unknown place, got %q", act.PlaceID)
-	}
-	if act.Place != nil {
-		t.Errorf("expected nil place for unknown place, got %v", act.Place)
-	}
-}
-
-func TestGenerate_InvalidStartDate(t *testing.T) {
-	// Arrange
-	pg := newTestGenerator(&fakePlaces{places: samplePlaces()}, &fakeLLM{resp: sampleLLMResponse()}, &fakeRepo{})
-	req := validRequest()
-	req.StartDate = "not-a-date"
-
-	// Act
-	_, err := pg.Generate(context.Background(), req)
-
-	// Assert
-	if err == nil {
-		t.Fatal("expected error for invalid start_date")
-	}
-	if !strings.Contains(err.Error(), "invalid start_date") {
-		t.Errorf("error = %q, want to contain %q", err.Error(), "invalid start_date")
-	}
-}
-
-func TestGenerate_PlacesSearchError(t *testing.T) {
-	// Arrange
-	placesErr := errors.New("API quota exceeded")
-	pg := newTestGenerator(&fakePlaces{err: placesErr}, &fakeLLM{resp: sampleLLMResponse()}, &fakeRepo{})
-
-	// Act
-	_, err := pg.Generate(context.Background(), validRequest())
-
-	// Assert
-	if err == nil {
-		t.Fatal("expected error when places search fails")
-	}
-	if !errors.Is(err, placesErr) {
-		t.Errorf("error should wrap original: %v", err)
-	}
-	if !strings.Contains(err.Error(), "places search failed") {
-		t.Errorf("error = %q, want to contain %q", err.Error(), "places search failed")
-	}
-}
-
-func TestGenerate_LLMError(t *testing.T) {
-	// Arrange
-	llmErr := errors.New("model overloaded")
-	pg := newTestGenerator(&fakePlaces{places: samplePlaces()}, &fakeLLM{err: llmErr}, &fakeRepo{})
-
-	// Act
-	_, err := pg.Generate(context.Background(), validRequest())
-
-	// Assert
-	if err == nil {
-		t.Fatal("expected error when LLM fails")
-	}
-	if !errors.Is(err, llmErr) {
-		t.Errorf("error should wrap original: %v", err)
-	}
-	if !strings.Contains(err.Error(), "LLM plan generation failed") {
-		t.Errorf("error = %q, want to contain %q", err.Error(), "LLM plan generation failed")
-	}
-}
-
-func TestGenerate_SaveError(t *testing.T) {
-	// Arrange
-	saveErr := errors.New("database connection lost")
-	places := &fakePlaces{places: samplePlaces()}
-	llm := &fakeLLM{resp: sampleLLMResponse()}
-	repository := &fakeRepo{err: saveErr}
-	pg := newTestGenerator(places, llm, repository)
-
-	// Act
-	_, err := pg.Generate(context.Background(), validRequest())
-
-	// Assert
-	if err == nil {
-		t.Fatal("expected error when save fails")
-	}
-	if !errors.Is(err, saveErr) {
-		t.Errorf("error should wrap original: %v", err)
-	}
-	if !strings.Contains(err.Error(), "save failed") {
-		t.Errorf("error = %q, want to contain %q", err.Error(), "save failed")
-	}
-}
-
-func TestGenerate_ViolationsReturnedButSaveSucceeds(t *testing.T) {
-	// Arrange: activity starts before earliest allowed time → OutsideHours violation
-	places := &fakePlaces{places: samplePlaces()}
-	llm := &fakeLLM{resp: &clients.LLMPlanResponse{
-		Days: []clients.LLMDayPlan{
-			{
-				DayNumber: 1,
-				Activities: []clients.LLMActivity{
-					{PlaceName: "金閣寺", StartTime: "06:00", EndTime: "08:00", DurationMin: 120},
-				},
-			},
-		},
-	}}
-	req := validRequest()
-	req.NumDays = 1
-	repository := &fakeRepo{}
-	pg := newTestGenerator(places, llm, repository)
-
-	// Act
-	result, err := pg.Generate(context.Background(), req)
-
-	// Assert
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(result.Violations) == 0 {
-		t.Error("expected violations but got none")
-	}
-	hasOutsideHours := false
-	for _, v := range result.Violations {
-		if v.Type == domain.ViolationOutsideHours {
-			hasOutsideHours = true
+		pg := usecase.NewPlanGenerator(places, llm, repoStub, clk)
+		result, err := pg.Generate(context.Background(), newDefaultRequest())
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
 		}
-	}
-	if !hasOutsideHours {
-		t.Error("expected OutsideHours violation")
-	}
-	// Verify itinerary was still saved despite violations
-	if repository.saved == nil {
-		t.Error("expected itinerary to be saved even with violations")
-	}
-}
 
-func TestGenerate_ActivityFieldsMapping(t *testing.T) {
-	// Arrange
-	places := &fakePlaces{places: samplePlaces()}
-	llm := &fakeLLM{resp: sampleLLMResponse()}
-	pg := newTestGenerator(places, llm, &fakeRepo{})
+		it := result.Itinerary
 
-	// Act
-	result, err := pg.Generate(context.Background(), validRequest())
+		// Title format
+		if want := "京都 2日間の旅"; it.Title != want {
+			t.Errorf("Title = %q, want %q", it.Title, want)
+		}
 
-	// Assert
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	act := result.Itinerary.Days[0].Activities[0]
-	if act.StartTime != "09:00" {
-		t.Errorf("start_time = %q, want %q", act.StartTime, "09:00")
-	}
-	if act.EndTime != "11:00" {
-		t.Errorf("end_time = %q, want %q", act.EndTime, "11:00")
-	}
-	if act.DurationMin != 120 {
-		t.Errorf("duration_min = %d, want %d", act.DurationMin, 120)
-	}
-	if act.Note != "朝一番で訪問" {
-		t.Errorf("note = %q, want %q", act.Note, "朝一番で訪問")
-	}
-	if act.Order != 0 {
-		t.Errorf("order = %d, want %d", act.Order, 0)
-	}
-}
+		// Destination
+		if it.Destination != "京都" {
+			t.Errorf("Destination = %q, want %q", it.Destination, "京都")
+		}
 
-func TestGenerate_EmptyPlacesStillCallsLLM(t *testing.T) {
-	// Arrange: places returns empty list
-	places := &fakePlaces{places: []domain.Place{}}
-	llm := &fakeLLM{resp: &clients.LLMPlanResponse{
-		Days: []clients.LLMDayPlan{
-			{
-				DayNumber: 1,
-				Activities: []clients.LLMActivity{
-					{PlaceName: "Some Place", StartTime: "10:00", EndTime: "12:00", DurationMin: 120},
+		// StartDate / EndDate
+		wantStart := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+		wantEnd := time.Date(2026, 4, 2, 0, 0, 0, 0, time.UTC)
+		if !it.StartDate.Equal(wantStart) {
+			t.Errorf("StartDate = %v, want %v", it.StartDate, wantStart)
+		}
+		if !it.EndDate.Equal(wantEnd) {
+			t.Errorf("EndDate = %v, want %v", it.EndDate, wantEnd)
+		}
+
+		// CreatedAt / UpdatedAt should use injected clock
+		if !it.CreatedAt.Equal(clk.Time) {
+			t.Errorf("CreatedAt = %v, want %v", it.CreatedAt, clk.Time)
+		}
+		if !it.UpdatedAt.Equal(clk.Time) {
+			t.Errorf("UpdatedAt = %v, want %v", it.UpdatedAt, clk.Time)
+		}
+
+		// ID prefix
+		if !strings.HasPrefix(it.ID, "itn_") {
+			t.Errorf("ID = %q, want prefix \"itn_\"", it.ID)
+		}
+
+		// Days count
+		if len(it.Days) != 2 {
+			t.Fatalf("len(Days) = %d, want 2", len(it.Days))
+		}
+
+		// Day 1 metadata
+		day1 := it.Days[0]
+		if day1.DayNumber != 1 {
+			t.Errorf("Days[0].DayNumber = %d, want 1", day1.DayNumber)
+		}
+		if !day1.Date.Equal(wantStart) {
+			t.Errorf("Days[0].Date = %v, want %v", day1.Date, wantStart)
+		}
+		if len(day1.Activities) != 2 {
+			t.Fatalf("len(Days[0].Activities) = %d, want 2", len(day1.Activities))
+		}
+
+		// Day 1, Activity 0 — known place "金閣寺" should be resolved
+		act0 := day1.Activities[0]
+		if act0.PlaceID != "place-1" {
+			t.Errorf("act0.PlaceID = %q, want \"place-1\"", act0.PlaceID)
+		}
+		if act0.Place == nil || act0.Place.Name != "金閣寺" {
+			t.Error("act0.Place should reference 金閣寺")
+		}
+		if act0.StartTime != "09:00" || act0.EndTime != "11:00" {
+			t.Errorf("act0 time = %s-%s, want 09:00-11:00", act0.StartTime, act0.EndTime)
+		}
+		if act0.DurationMin != 120 {
+			t.Errorf("act0.DurationMin = %d, want 120", act0.DurationMin)
+		}
+		if act0.Note != "朝一で訪問" {
+			t.Errorf("act0.Note = %q, want %q", act0.Note, "朝一で訪問")
+		}
+		if act0.Order != 0 {
+			t.Errorf("act0.Order = %d, want 0", act0.Order)
+		}
+
+		// Day 1, Activity 1 — known place "伏見稲荷大社"
+		act1 := day1.Activities[1]
+		if act1.PlaceID != "place-2" {
+			t.Errorf("act1.PlaceID = %q, want \"place-2\"", act1.PlaceID)
+		}
+		if act1.Order != 1 {
+			t.Errorf("act1.Order = %d, want 1", act1.Order)
+		}
+
+		// Day 2 date
+		day2 := it.Days[1]
+		if day2.DayNumber != 2 {
+			t.Errorf("Days[1].DayNumber = %d, want 2", day2.DayNumber)
+		}
+		if !day2.Date.Equal(wantEnd) {
+			t.Errorf("Days[1].Date = %v, want %v", day2.Date, wantEnd)
+		}
+
+		// Day 2, Activity 0 — unknown place should have empty PlaceID
+		day2Act0 := day2.Activities[0]
+		if day2Act0.PlaceID != "" {
+			t.Errorf("day2Act0.PlaceID = %q, want empty (unknown place)", day2Act0.PlaceID)
+		}
+		if day2Act0.Place != nil {
+			t.Errorf("day2Act0.Place = %v, want nil", day2Act0.Place)
+		}
+
+		// Itinerary was persisted
+		if repoStub.saved == nil {
+			t.Error("itinerary was not saved to repository")
+		}
+	})
+
+	t.Run("passes destination and place names to LLM", func(t *testing.T) {
+		places := &stubPlaces{places: newSamplePlaces()}
+		llm := &stubLLM{resp: newSampleLLMResponse()}
+		repoStub := &stubRepo{}
+
+		pg := usecase.NewPlanGenerator(places, llm, repoStub, newFixedClock(t))
+		_, err := pg.Generate(context.Background(), newDefaultRequest())
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if llm.capturedReq == nil {
+			t.Fatal("LLM was not called")
+		}
+
+		got := llm.capturedReq
+		if got.Destination != "京都" {
+			t.Errorf("LLM req.Destination = %q, want %q", got.Destination, "京都")
+		}
+		if got.NumDays != 2 {
+			t.Errorf("LLM req.NumDays = %d, want 2", got.NumDays)
+		}
+		if got.Budget != "moderate" {
+			t.Errorf("LLM req.Budget = %q, want %q", got.Budget, "moderate")
+		}
+		if got.TravelStyle != "balanced" {
+			t.Errorf("LLM req.TravelStyle = %q, want %q", got.TravelStyle, "balanced")
+		}
+
+		wantPlaces := []string{"金閣寺", "伏見稲荷大社"}
+		if diff := cmp.Diff(wantPlaces, got.PlaceNames); diff != "" {
+			t.Errorf("LLM req.PlaceNames mismatch (-want +got):\n%s", diff)
+		}
+		wantInterests := []string{"culture", "food"}
+		if diff := cmp.Diff(wantInterests, got.Interests); diff != "" {
+			t.Errorf("LLM req.Interests mismatch (-want +got):\n%s", diff)
+		}
+	})
+
+	t.Run("searches places with destination query", func(t *testing.T) {
+		places := &stubPlaces{places: newSamplePlaces()}
+		llm := &stubLLM{resp: newSampleLLMResponse()}
+		repoStub := &stubRepo{}
+
+		pg := usecase.NewPlanGenerator(places, llm, repoStub, newFixedClock(t))
+		_, err := pg.Generate(context.Background(), newDefaultRequest())
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if places.capturedQuery != "京都" {
+			t.Errorf("places query = %q, want %q", places.capturedQuery, "京都")
+		}
+	})
+
+	t.Run("returns violations without failing when constraints are violated", func(t *testing.T) {
+		llmResp := &clients.LLMPlanResponse{
+			Days: []clients.LLMDayPlan{
+				{
+					DayNumber: 1,
+					Activities: []clients.LLMActivity{
+						{PlaceName: "早朝スポット", StartTime: "06:00", EndTime: "07:00", DurationMin: 60},
+					},
 				},
 			},
+		}
+
+		places := &stubPlaces{places: []domain.Place{}}
+		llm := &stubLLM{resp: llmResp}
+		repoStub := &stubRepo{}
+
+		pg := usecase.NewPlanGenerator(places, llm, repoStub, newFixedClock(t))
+		req := newDefaultRequest()
+		req.NumDays = 1
+		result, err := pg.Generate(context.Background(), req)
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.Itinerary == nil {
+			t.Fatal("expected itinerary, got nil")
+		}
+		if repoStub.saved == nil {
+			t.Error("itinerary should be saved even with violations")
+		}
+
+		hasOutsideHours := false
+		for _, v := range result.Violations {
+			if v.Type == domain.ViolationOutsideHours {
+				hasOutsideHours = true
+			}
+		}
+		if !hasOutsideHours {
+			t.Errorf("expected ViolationOutsideHours, got %v", result.Violations)
+		}
+	})
+
+	t.Run("returns no violations when plan is valid", func(t *testing.T) {
+		places := &stubPlaces{places: newSamplePlaces()}
+		llm := &stubLLM{resp: newSampleLLMResponse()}
+		repoStub := &stubRepo{}
+
+		pg := usecase.NewPlanGenerator(places, llm, repoStub, newFixedClock(t))
+		result, err := pg.Generate(context.Background(), newDefaultRequest())
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(result.Violations) != 0 {
+			t.Errorf("expected no violations, got %v", result.Violations)
+		}
+	})
+
+	t.Run("succeeds with empty candidate places from search", func(t *testing.T) {
+		llmResp := &clients.LLMPlanResponse{
+			Days: []clients.LLMDayPlan{
+				{
+					DayNumber: 1,
+					Activities: []clients.LLMActivity{
+						{PlaceName: "Some Place", StartTime: "10:00", EndTime: "12:00", DurationMin: 120},
+					},
+				},
+			},
+		}
+
+		places := &stubPlaces{places: []domain.Place{}}
+		llm := &stubLLM{resp: llmResp}
+		repoStub := &stubRepo{}
+
+		pg := usecase.NewPlanGenerator(places, llm, repoStub, newFixedClock(t))
+		req := newDefaultRequest()
+		req.NumDays = 1
+		result, err := pg.Generate(context.Background(), req)
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.Itinerary == nil {
+			t.Fatal("expected itinerary, got nil")
+		}
+		// Activities should have no place links
+		act := result.Itinerary.Days[0].Activities[0]
+		if act.PlaceID != "" {
+			t.Errorf("expected empty PlaceID, got %q", act.PlaceID)
+		}
+		if act.Place != nil {
+			t.Errorf("expected nil Place, got %v", act.Place)
+		}
+		// LLM should still have been called
+		if llm.capturedReq == nil {
+			t.Error("expected LLM to be called even with empty places")
+		}
+	})
+}
+
+func TestPlanGeneratorGenerateErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		req     domain.PlanRequest
+		places  *stubPlaces
+		llm     *stubLLM
+		repo    *stubRepo
+		wantErr string
+	}{
+		{
+			name: "returns error when start_date is invalid",
+			req: func() domain.PlanRequest {
+				r := newDefaultRequest()
+				r.StartDate = "not-a-date"
+				return r
+			}(),
+			places:  &stubPlaces{places: newSamplePlaces()},
+			llm:     &stubLLM{resp: newSampleLLMResponse()},
+			repo:    &stubRepo{},
+			wantErr: "invalid start_date",
 		},
-	}}
-	req := validRequest()
-	req.NumDays = 1
-	pg := newTestGenerator(places, llm, &fakeRepo{})
-
-	// Act
-	result, err := pg.Generate(context.Background(), req)
-
-	// Assert: should still succeed; activities just won't have place links
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		{
+			name:    "returns error when places search fails",
+			req:     newDefaultRequest(),
+			places:  &stubPlaces{err: errors.New("API unavailable")},
+			llm:     &stubLLM{resp: newSampleLLMResponse()},
+			repo:    &stubRepo{},
+			wantErr: "places search failed",
+		},
+		{
+			name:    "returns error when LLM generation fails",
+			req:     newDefaultRequest(),
+			places:  &stubPlaces{places: newSamplePlaces()},
+			llm:     &stubLLM{err: errors.New("rate limit exceeded")},
+			repo:    &stubRepo{},
+			wantErr: "LLM plan generation failed",
+		},
+		{
+			name:    "returns error when repository save fails",
+			req:     newDefaultRequest(),
+			places:  &stubPlaces{places: newSamplePlaces()},
+			llm:     &stubLLM{resp: newSampleLLMResponse()},
+			repo:    &stubRepo{err: errors.New("connection refused")},
+			wantErr: "save failed",
+		},
 	}
-	if result.Itinerary == nil {
-		t.Fatal("expected itinerary, got nil")
-	}
-	act := result.Itinerary.Days[0].Activities[0]
-	if act.PlaceID != "" {
-		t.Errorf("expected empty place_id, got %q", act.PlaceID)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pg := usecase.NewPlanGenerator(tt.places, tt.llm, tt.repo, newFixedClock(t))
+			_, err := pg.Generate(context.Background(), tt.req)
+
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			if !strings.Contains(err.Error(), tt.wantErr) {
+				t.Errorf("error = %q, want containing %q", err.Error(), tt.wantErr)
+			}
+		})
 	}
 }
