@@ -24,7 +24,7 @@ build-frontend:
 test: test-api test-frontend
 
 test-api:
-	cd api && go test ./...
+	cd api && GOCACHE=/tmp/go-build-cache go test ./...
 
 test-frontend:
 	cd frontend && npm test
