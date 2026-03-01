@@ -79,12 +79,18 @@ func TestPlanHandlerGeneratePlan(t *testing.T) {
 			t.Errorf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 		}
 
-		var result map[string]string
+		var result handler.ErrorResponse
 		if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
 			t.Fatalf("failed to parse error response: %v", err)
 		}
-		if result["error"] == "" {
-			t.Error("error response should contain 'error' field")
+		if result.Message == "" {
+			t.Error("error response should contain 'message' field")
+		}
+		if result.Code == "" {
+			t.Error("error response should contain 'code' field")
+		}
+		if result.Status != http.StatusBadRequest {
+			t.Errorf("error status = %d, want %d", result.Status, http.StatusBadRequest)
 		}
 	})
 
