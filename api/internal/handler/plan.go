@@ -1,0 +1,57 @@
+package handler
+
+import (
+	"encoding/json"
+	"net/http"
+
+	"github.com/sibukixxx/travelist/api/internal/domain"
+	"github.com/sibukixxx/travelist/api/internal/usecase"
+)
+
+// PlanHandler handles HTTP requests for itinerary planning.
+type PlanHandler struct {
+	generator *usecase.PlanGenerator
+}
+
+// NewPlanHandler creates a new PlanHandler.
+func NewPlanHandler(generator *usecase.PlanGenerator) *PlanHandler {
+	return &PlanHandler{generator: generator}
+}
+
+// GeneratePlan handles POST /api/plans.
+func (h *PlanHandler) GeneratePlan(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req domain.PlanRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		return
+	}
+
+	// Apply defaults if not set
+	if req.Constraint.MaxWalkDistanceM == 0 {
+		req.Constraint = domain.DefaultConstraint()
+	}
+
+	result, err := h.generator.Generate(r.Context(), req)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}
+
+// HealthCheck handles GET /api/health.
+func HealthCheck(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(v)
+}
