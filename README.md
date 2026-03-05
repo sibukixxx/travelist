@@ -11,6 +11,10 @@ AI を活用した旅行プラン生成 Web アプリケーション。
 | LLM | Anthropic Claude API |
 | 場所検索 | Google Places API |
 
+## API ドキュメント
+
+- [api/API.md](api/API.md)
+
 ## セットアップ
 
 ### 前提条件
@@ -28,6 +32,67 @@ cd travelist
 ```
 
 ### 2. 環境変数を設定
+
+#### 方法 A: 1Password + direnv（推奨）
+
+dotfiles の仕組みを使い、`.env` ファイルなしで秘密情報を管理する方法。
+
+**前提条件:**
+- [1Password](https://1password.com/) アカウント + デスクトップアプリ
+- [1Password CLI (`op`)](https://developer.1password.com/docs/cli/) — `brew install 1password-cli`
+- [direnv](https://direnv.net/) — `brew install direnv`
+- `.zshrc` に `eval "$(direnv hook zsh)"` を追加済み
+- 1Password アプリの **設定 → 開発者 → 「1Password CLI と連携」** を有効化
+
+**手順:**
+
+1. **1Password に API キーを登録**
+
+   ```bash
+   # 例: GOOGLE_PLACES_API_KEY を登録
+   read -s -p "API Key: " KEY && \
+   op item create \
+     --vault Personal \
+     --category "API Credential" \
+     --title "Google Places" \
+     "API key=$KEY" && \
+   unset KEY
+   ```
+
+   | 環境変数名 | 1Password アイテム名 | フィールド名 |
+   |-----------|---------------------|-------------|
+   | `GOOGLE_PLACES_API_KEY` | `Google Places` | `API key` |
+   | `LLM_API_KEY` | `Anthropic` | `API key` |
+
+2. **`.envrc` を作成**
+
+   ```bash
+   cat <<'EOF' > .envrc
+   command -v op >/dev/null || { echo "[direnv] op not found" >&2; exit 1; }
+   : "${OP_VAULT:=Personal}"
+
+   export PORT=8080
+   export GOOGLE_PLACES_API_KEY="$(op read "op://${OP_VAULT}/Google Places/API key")"
+   export LLM_API_KEY="$(op read "op://${OP_VAULT}/Anthropic/API key")"
+   EOF
+   ```
+
+3. **direnv を許可**
+
+   ```bash
+   direnv allow
+   ```
+
+4. **動作確認**
+
+   ```bash
+   # ディレクトリに cd すると自動で環境変数がセットされる
+   echo $GOOGLE_PLACES_API_KEY
+   ```
+
+> `.envrc` は `.gitignore` に含まれているため、リポジトリにはコミットされません。
+
+#### 方法 B: `.env` ファイル（簡易）
 
 ```bash
 cp .env.example .env
@@ -64,7 +129,8 @@ make dev-frontend
 | `PORT` | - | `8080` | API サーバーのポート番号 |
 | `STATIC_DIR` | - | (なし) | フロントエンド静的ファイルのパス（本番のみ） |
 | `GOOGLE_PLACES_API_KEY` | **必須** | - | Google Places API キー |
-| `LLM_API_KEY` | **必須** | - | Anthropic Claude API キー |
+| `LLM_PROVIDER` | - | `stub` | LLM プロバイダ (`stub`, `anthropic`, `gemini`) |
+| `LLM_API_KEY` | **条件付き** | - | LLM API キー（`stub` 以外で必須） |
 
 ### API キーの取得方法
 
@@ -79,14 +145,15 @@ make dev-frontend
 
 > 料金: 月 $200 分の無料枠あり。詳細は [料金ページ](https://developers.google.com/maps/billing-and-pricing/pricing) を参照。
 
-#### Anthropic Claude API キー
+#### LLM API キー
 
-1. [Anthropic Console](https://console.anthropic.com/) にアクセス
-2. アカウントを作成 / ログイン
-3. 「API Keys」 → 「Create Key」で新しいキーを発行
-4. 発行されたキー（`sk-ant-...` 形式）をコピーし `.env` に設定
+`LLM_PROVIDER` に応じて、対応する API キーを `LLM_API_KEY` に設定してください。
 
-> 料金: 従量課金制。詳細は [料金ページ](https://www.anthropic.com/pricing) を参照。
+| プロバイダ | 取得先 | キー形式 |
+|-----------|--------|---------|
+| `anthropic` | [Anthropic Console](https://console.anthropic.com/) → API Keys → Create Key | `sk-ant-...` |
+| `gemini` | [Google AI Studio](https://aistudio.google.com/) → Get API key → Create API key | `AIzaSy...` |
+| `stub` | (不要) | - |
 
 ## 開発コマンド
 
