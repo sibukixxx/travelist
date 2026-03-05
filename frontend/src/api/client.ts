@@ -1,4 +1,6 @@
 import type { PlanRequest, GenerateResult } from '../types/itinerary'
+import type { RegisterRequest, RegisterResponse } from '../types/user'
+import { parseApiError } from './errors'
 
 const API_BASE = '/api'
 
@@ -12,7 +14,7 @@ async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
   })
   if (!res.ok) {
     const body = await res.text()
-    throw new Error(`API error ${res.status}: ${body}`)
+    throw parseApiError(res.status, body)
   }
   return res.json()
 }
@@ -28,15 +30,13 @@ export async function healthCheck(): Promise<{ status: string }> {
   return fetchJSON<{ status: string }>('/health')
 }
 
-export interface RegisteredUser {
-  id: string
-  email: string
-  created_at: string
+export async function registerUser(req: RegisterRequest): Promise<RegisterResponse> {
+  return fetchJSON<RegisterResponse>('/users', {
+    method: 'POST',
+    body: JSON.stringify(req),
+  })
 }
 
-export async function registerUser(email: string): Promise<RegisteredUser> {
-  return fetchJSON<RegisteredUser>('/users/register', {
-    method: 'POST',
-    body: JSON.stringify({ email }),
-  })
+export async function verifyEmail(token: string): Promise<{ message: string }> {
+  return fetchJSON<{ message: string }>(`/users/verify?token=${encodeURIComponent(token)}`)
 }

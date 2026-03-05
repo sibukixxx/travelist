@@ -3,60 +3,103 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"net/mail"
-	"strings"
 
+	"github.com/sibukixxx/travelist/api/internal/apperror"
 	"github.com/sibukixxx/travelist/api/internal/domain"
 	"github.com/sibukixxx/travelist/api/internal/infra/clock"
-	"github.com/sibukixxx/travelist/api/internal/infra/repo"
 )
+
+// UserRepo is the repository interface used by user usecases.
+type UserRepo interface {
+	Create(ctx context.Context, user *domain.User) error
+	FindByEmail(ctx context.Context, email string) (*domain.User, error)
+	FindByVerificationToken(ctx context.Context, token string) (*domain.User, error)
+	Update(ctx context.Context, user *domain.User) error
+}
+
+// EmailSender is the interface for sending emails.
+type EmailSender interface {
+	SendVerificationEmail(ctx context.Context, to, token string) error
+}
+
+// RegisterRequest is the input for user registration.
+type RegisterRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+// RegisterResult is the output of user registration.
+type RegisterResult struct {
+	UserID string `json:"user_id"`
+	Email  string `json:"email"`
+}
 
 // UserRegistrar handles user registration.
 type UserRegistrar struct {
-	repo  repo.UserRepository
+	users UserRepo
+	email EmailSender
 	clock clock.Clock
 }
 
-func NewUserRegistrar(repository repo.UserRepository, clk clock.Clock) *UserRegistrar {
-	return &UserRegistrar{
-		repo:  repository,
-		clock: clk,
-	}
+// NewUserRegistrar creates a new UserRegistrar.
+func NewUserRegistrar(users UserRepo, email EmailSender, clk clock.Clock) *UserRegistrar {
+	return &UserRegistrar{users: users, email: email, clock: clk}
 }
 
-func (ur *UserRegistrar) Register(ctx context.Context, email string) (*domain.User, error) {
-	normalizedEmail, err := normalizeAndValidateEmail(email)
+// Register creates a new user with email verification.
+func (r *UserRegistrar) Register(ctx context.Context, req RegisterRequest) (*RegisterResult, error) {
+	// Validate
+	if err := domain.ValidateEmail(req.Email); err != nil {
+		return nil, apperror.NewValidation(err.Error())
+	}
+	if err := domain.ValidatePassword(req.Password); err != nil {
+		return nil, apperror.NewValidation(err.Error())
+	}
+
+	// Check duplicate
+	existing, err := r.users.FindByEmail(ctx, req.Email)
 	if err != nil {
-		return nil, err
+		return nil, apperror.NewInternal(fmt.Errorf("find by email: %w", err))
+	}
+	if existing != nil {
+		return nil, apperror.NewConflict("email already registered")
 	}
 
-	now := ur.clock.Now().UTC()
+	// Hash password
+	hash, err := domain.HashPassword(req.Password)
+	if err != nil {
+		return nil, apperror.NewInternal(fmt.Errorf("hash password: %w", err))
+	}
+
+	// Generate verification token
+	token, err := domain.GenerateVerificationToken()
+	if err != nil {
+		return nil, apperror.NewInternal(fmt.Errorf("generate token: %w", err))
+	}
+
+	now := r.clock.Now()
+	expires := now.Add(24 * 60 * 60 * 1e9) // 24 hours
+
 	user := &domain.User{
-		ID:        fmt.Sprintf("usr_%d", now.UnixNano()),
-		Email:     normalizedEmail,
-		CreatedAt: now,
+		ID:                domain.NewUserID(),
+		Email:             req.Email,
+		PasswordHash:      hash,
+		VerificationToken: token,
+		TokenExpiresAt:    &expires,
+		CreatedAt:         now,
+		UpdatedAt:         now,
 	}
 
-	if err := ur.repo.Create(ctx, user); err != nil {
+	if err := r.users.Create(ctx, user); err != nil {
 		return nil, err
 	}
 
-	return user, nil
-}
-
-func normalizeAndValidateEmail(email string) (string, error) {
-	normalized := strings.ToLower(strings.TrimSpace(email))
-	if normalized == "" {
-		return "", fmt.Errorf("email is required")
+	if err := r.email.SendVerificationEmail(ctx, user.Email, user.VerificationToken); err != nil {
+		return nil, apperror.NewInternal(fmt.Errorf("send verification email: %w", err))
 	}
 
-	addr, err := mail.ParseAddress(normalized)
-	if err != nil || addr.Address != normalized {
-		return "", fmt.Errorf("invalid email format")
-	}
-	return normalized, nil
-}
-
-func IsEmailAlreadyExistsError(err error) bool {
-	return err == repo.ErrUserAlreadyExists
+	return &RegisterResult{
+		UserID: user.ID,
+		Email:  user.Email,
+	}, nil
 }

@@ -1,24 +1,31 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { PlanForm } from './PlanForm'
 import { BudgetSummaryDisplay } from './BudgetSummary'
-import { UserRegistrationForm } from './UserRegistrationForm'
+import { ResultActions } from './ResultActions'
 import type { GenerateResult } from '../types/itinerary'
 
 export function HomePage() {
   const [result, setResult] = useState<GenerateResult | null>(null)
+  const formRef = useRef<HTMLDivElement>(null)
+
+  const handleRegenerate = () => {
+    formRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
 
   return (
     <div>
-      <UserRegistrationForm />
-      <PlanForm onResult={setResult} />
+      <div ref={formRef}>
+        <PlanForm onResult={setResult} />
+      </div>
       {result && (
         <div className="result">
           <h2>{result.itinerary.title}</h2>
-          {(result.violations ?? []).length > 0 && (
+          <ResultActions result={result} onRegenerate={handleRegenerate} />
+          {result.violations.length > 0 && (
             <div className="violations">
               <h3>注意事項</h3>
               <ul>
-                {(result.violations ?? []).map((v, i) => (
+                {result.violations.map((v, i) => (
                   <li key={i}>{v.message}</li>
                 ))}
               </ul>
@@ -27,7 +34,7 @@ export function HomePage() {
           {result.budget_summary && (
             <BudgetSummaryDisplay
               summary={result.budget_summary}
-              violations={result.violations ?? []}
+              violations={result.violations}
             />
           )}
           {result.itinerary.days.map((day) => {
