@@ -21,18 +21,25 @@ func main() {
 
 	// Build dependencies
 	placesClient := clients.NewStubPlacesClient()
-	llmClient := clients.NewStubLLMClient()
+	llmClient, err := clients.NewLLMClient(os.Getenv("LLM_PROVIDER"), os.Getenv("LLM_API_KEY"))
+	if err != nil {
+		log.Fatalf("Failed to create LLM client: %v", err)
+	}
 	itineraryRepo := repo.NewMemoryItineraryRepository()
 	clk := clock.RealClock{}
 
 	planGenerator := usecase.NewPlanGenerator(placesClient, llmClient, itineraryRepo, clk)
 	planHandler := handler.NewPlanHandler(planGenerator)
+	userRepo := repo.NewInMemoryUserRepository()
+	userRegistrar := usecase.NewUserRegistrar(userRepo, clk)
+	userHandler := handler.NewUserHandler(userRegistrar)
 
 	mux := http.NewServeMux()
 
 	// API routes
 	mux.HandleFunc("/api/health", handler.HealthCheck)
 	mux.HandleFunc("/api/plans", planHandler.GeneratePlan)
+	mux.HandleFunc("/api/users/register", userHandler.Register)
 
 	// Serve frontend static files (production mode)
 	staticDir := os.Getenv("STATIC_DIR")

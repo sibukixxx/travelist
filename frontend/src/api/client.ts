@@ -27,3 +27,16 @@ export async function generatePlan(req: PlanRequest): Promise<GenerateResult> {
 export async function healthCheck(): Promise<{ status: string }> {
   return fetchJSON<{ status: string }>('/health')
 }
+
+export interface RegisteredUser {
+  id: string
+  email: string
+  created_at: string
+}
+
+export async function registerUser(email: string): Promise<RegisteredUser> {
+  return fetchJSON<RegisteredUser>('/users/register', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}

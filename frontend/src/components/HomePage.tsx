@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { PlanForm } from './PlanForm'
 import { BudgetSummaryDisplay } from './BudgetSummary'
+import { UserRegistrationForm } from './UserRegistrationForm'
 import type { GenerateResult } from '../types/itinerary'
 
 export function HomePage() {
@@ -8,15 +9,16 @@ export function HomePage() {
 
   return (
     <div>
+      <UserRegistrationForm />
       <PlanForm onResult={setResult} />
       {result && (
         <div className="result">
           <h2>{result.itinerary.title}</h2>
-          {result.violations.length > 0 && (
+          {(result.violations ?? []).length > 0 && (
             <div className="violations">
               <h3>注意事項</h3>
               <ul>
-                {result.violations.map((v, i) => (
+                {(result.violations ?? []).map((v, i) => (
                   <li key={i}>{v.message}</li>
                 ))}
               </ul>
@@ -25,7 +27,7 @@ export function HomePage() {
           {result.budget_summary && (
             <BudgetSummaryDisplay
               summary={result.budget_summary}
-              violations={result.violations}
+              violations={result.violations ?? []}
             />
           )}
           {result.itinerary.days.map((day) => {
