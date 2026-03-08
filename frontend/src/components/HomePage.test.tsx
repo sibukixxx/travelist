@@ -25,6 +25,7 @@ describe('HomePage', () => {
 
   it('renders PlanForm without crashing', () => {
     renderWithProviders(<HomePage />)
+    expect(screen.getByRole('heading', { name: '旅の計画を、もっと楽しく' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'プランを生成' })).toBeInTheDocument()
   })
 
@@ -36,7 +37,8 @@ describe('HomePage', () => {
 
   it('does not show result section before form submission', () => {
     renderWithProviders(<HomePage />)
-    expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument()
+    // Hero and registration headings exist, but no itinerary title
+    expect(screen.queryByText('京都3日間の旅')).not.toBeInTheDocument()
   })
 
   describe('after successful plan generation', () => {
@@ -204,8 +206,8 @@ describe('HomePage', () => {
       expect(
         await screen.findByText('エラー: API error 503: Service Unavailable'),
       ).toBeInTheDocument()
-      // Assert no result section
-      expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument()
+      // Assert no itinerary result section
+      expect(screen.queryByText('京都3日間の旅')).not.toBeInTheDocument()
 
       // Retry with success
       const retryResult = {
