@@ -7,6 +7,14 @@ import type { GenerateResult } from '../types/itinerary'
 export function HomePage() {
   const [result, setResult] = useState<GenerateResult | null>(null)
   const formRef = useRef<HTMLDivElement>(null)
+  const resultRef = useRef<HTMLDivElement>(null)
+
+  const handleResult = (data: GenerateResult) => {
+    setResult(data)
+    setTimeout(() => {
+      resultRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, 100)
+  }
 
   const handleRegenerate = () => {
     formRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -14,13 +22,27 @@ export function HomePage() {
 
   return (
     <div>
-      <div ref={formRef}>
-        <PlanForm onResult={setResult} />
+      {!result && (
+        <div className="hero">
+          <h1 className="hero-title">旅の計画を、もっと楽しく</h1>
+          <p className="hero-subtitle">
+            行き先と日程を入れるだけで、あなたにぴったりの旅プランをご提案します
+          </p>
+        </div>
+      )}
+
+      <div ref={formRef} className="card card-accent" style={{ marginBottom: '2rem' }}>
+        <h2 className="section-title">プラン条件</h2>
+        <PlanForm onResult={handleResult} />
       </div>
+
       {result && (
-        <div className="result">
-          <h2>{result.itinerary.title}</h2>
-          <ResultActions result={result} onRegenerate={handleRegenerate} />
+        <div ref={resultRef} className="result">
+          <div className="result-header">
+            <h2 className="result-title">{result.itinerary.title}</h2>
+            <ResultActions result={result} onRegenerate={handleRegenerate} />
+          </div>
+
           {result.violations.length > 0 && (
             <div className="violations">
               <h3>注意事項</h3>
@@ -31,19 +53,21 @@ export function HomePage() {
               </ul>
             </div>
           )}
+
           {result.budget_summary && (
             <BudgetSummaryDisplay
               summary={result.budget_summary}
               violations={result.violations}
             />
           )}
+
           {result.itinerary.days.map((day) => {
             const dayCost = result.budget_summary?.daily_costs.find(
               (dc) => dc.day_number === day.day_number
             )
             return (
               <div key={day.day_number} className="day-plan">
-                <h3>Day {day.day_number} - {day.date}</h3>
+                <h3>Day {day.day_number} &mdash; {day.date}</h3>
                 <ul>
                   {day.activities.map((act) => (
                     <li key={act.order}>

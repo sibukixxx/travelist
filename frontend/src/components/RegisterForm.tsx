@@ -33,57 +33,62 @@ export function RegisterForm() {
 
   if (mutation.isSuccess) {
     return (
-      <div className="register-success">
-        <h2>登録完了</h2>
-        <p>確認メールを送信しました。メール内のリンクをクリックして登録を完了してください。</p>
+      <div className="card" style={{ maxWidth: 480, margin: '3rem auto', textAlign: 'center' }}>
+        <div className="register-success">
+          <h2>登録完了</h2>
+          <p>確認メールを送信しました。メール内のリンクをクリックして登録を完了してください。</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="register-form">
-      <h2>ユーザー登録</h2>
+    <div className="card card-accent" style={{ maxWidth: 480, margin: '3rem auto' }}>
+      <form onSubmit={handleSubmit(onSubmit)} className="register-form">
+        <h2 className="section-title">ユーザー登録</h2>
 
-      <div className="form-group">
-        <label htmlFor="email">メールアドレス</label>
-        <input
-          id="email"
-          type="email"
-          {...register('email', { required: 'メールアドレスを入力してください' })}
-          placeholder="example@mail.com"
-        />
-        {errors.email && <span className="error">{errors.email.message}</span>}
-      </div>
+        <div className="form-group">
+          <label htmlFor="email">メールアドレス</label>
+          <input
+            id="email"
+            type="email"
+            {...register('email', { required: 'メールアドレスを入力してください' })}
+            placeholder="example@mail.com"
+          />
+          {errors.email && <span className="error">{errors.email.message}</span>}
+        </div>
 
-      <div className="form-group">
-        <label htmlFor="password">パスワード</label>
-        <input
-          id="password"
-          type="password"
-          {...register('password', {
-            required: 'パスワードを入力してください',
-            minLength: { value: 8, message: 'パスワードは8文字以上で入力してください' },
-            maxLength: { value: 72, message: 'パスワードは72文字以下で入力してください' },
-          })}
-        />
-        {errors.password && <span className="error">{errors.password.message}</span>}
-      </div>
+        <div className="form-group">
+          <label htmlFor="password">パスワード</label>
+          <input
+            id="password"
+            type="password"
+            {...register('password', {
+              required: 'パスワードを入力してください',
+              minLength: { value: 8, message: 'パスワードは8文字以上で入力してください' },
+              maxLength: { value: 72, message: 'パスワードは72文字以下で入力してください' },
+            })}
+          />
+          {errors.password && <span className="error">{errors.password.message}</span>}
+        </div>
 
-      <div className="form-group">
-        <label htmlFor="passwordConfirm">パスワード（確認）</label>
-        <input
-          id="passwordConfirm"
-          type="password"
-          {...register('passwordConfirm', { required: 'パスワードを再入力してください' })}
-        />
-        {errors.passwordConfirm && <span className="error">{errors.passwordConfirm.message}</span>}
-      </div>
+        <div className="form-group">
+          <label htmlFor="passwordConfirm">パスワード（確認）</label>
+          <input
+            id="passwordConfirm"
+            type="password"
+            {...register('passwordConfirm', { required: 'パスワードを再入力してください' })}
+          />
+          {errors.passwordConfirm && <span className="error">{errors.passwordConfirm.message}</span>}
+        </div>
 
-      {errors.root && <div className="error">{errors.root.message}</div>}
+        {errors.root && <div className="error">{errors.root.message}</div>}
 
-      <button type="submit" disabled={mutation.isPending}>
-        {mutation.isPending ? '登録中...' : '登録'}
-      </button>
-    </form>
+        <button type="submit" disabled={mutation.isPending}>
+          {mutation.isPending && <span className="spinner" />}
+          {mutation.isPending ? '登録中...' : '登録'}
+        </button>
+      </form>
+    </div>
   )
 }

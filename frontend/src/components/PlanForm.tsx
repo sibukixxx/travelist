@@ -77,27 +77,29 @@ export function PlanForm({ onResult }: PlanFormProps) {
         {errors.destination && <span className="error">{errors.destination.message}</span>}
       </div>
 
-      <div className="form-group">
-        <label htmlFor="num_days">日数</label>
-        <input
-          id="num_days"
-          type="number"
-          {...register('num_days', { required: true, min: 1, max: 14, valueAsNumber: true })}
-        />
-      </div>
+      <div className="form-row">
+        <div className="form-group">
+          <label htmlFor="num_days">日数</label>
+          <input
+            id="num_days"
+            type="number"
+            {...register('num_days', { required: true, min: 1, max: 14, valueAsNumber: true })}
+          />
+        </div>
 
-      <div className="form-group">
-        <label htmlFor="start_date">開始日</label>
-        <input
-          id="start_date"
-          type="date"
-          min={today}
-          {...register('start_date', {
-            required: '開始日を入力してください',
-            validate: (v) => v >= today || '過去の日付は選択できません',
-          })}
-        />
-        {errors.start_date && <span className="error">{errors.start_date.message}</span>}
+        <div className="form-group">
+          <label htmlFor="start_date">開始日</label>
+          <input
+            id="start_date"
+            type="date"
+            min={today}
+            {...register('start_date', {
+              required: '開始日を入力してください',
+              validate: (v) => v >= today || '過去の日付は選択できません',
+            })}
+          />
+          {errors.start_date && <span className="error">{errors.start_date.message}</span>}
+        </div>
       </div>
 
       <div className="form-group">
@@ -115,13 +117,24 @@ export function PlanForm({ onResult }: PlanFormProps) {
         />
       </div>
 
-      <div className="form-group">
-        <label htmlFor="budget">予算</label>
-        <select id="budget" {...register('budget')}>
-          <option value="budget">節約</option>
-          <option value="moderate">普通</option>
-          <option value="luxury">贅沢</option>
-        </select>
+      <div className="form-row">
+        <div className="form-group">
+          <label htmlFor="budget">予算レベル</label>
+          <select id="budget" {...register('budget')}>
+            <option value="budget">節約</option>
+            <option value="moderate">普通</option>
+            <option value="luxury">贅沢</option>
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="travel_style">旅行スタイル</label>
+          <select id="travel_style" {...register('travel_style')}>
+            <option value="relaxed">ゆったり</option>
+            <option value="balanced">バランス</option>
+            <option value="active">アクティブ</option>
+          </select>
+        </div>
       </div>
 
       <div className="form-group">
@@ -135,16 +148,8 @@ export function PlanForm({ onResult }: PlanFormProps) {
         />
       </div>
 
-      <div className="form-group">
-        <label htmlFor="travel_style">旅行スタイル</label>
-        <select id="travel_style" {...register('travel_style')}>
-          <option value="relaxed">ゆったり</option>
-          <option value="balanced">バランス</option>
-          <option value="active">アクティブ</option>
-        </select>
-      </div>
-
       <button type="submit" disabled={mutation.isPending}>
+        {mutation.isPending && <span className="spinner" />}
         {mutation.isPending ? 'プラン生成中...' : 'プランを生成'}
       </button>
 
