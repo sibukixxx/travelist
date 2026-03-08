@@ -220,7 +220,7 @@ describe('PlanForm', () => {
       await user.click(screen.getByRole('button', { name: '文化 を追加' }))
       await user.click(screen.getByRole('button', { name: '食事 を追加' }))
       await user.type(screen.getByLabelText(/予算上限/), '50000')
-      await user.selectOptions(screen.getByLabelText('予算'), 'luxury')
+      await user.selectOptions(screen.getByLabelText('予算レベル'), 'luxury')
       await user.selectOptions(screen.getByLabelText('旅行スタイル'), 'active')
 
       // Act

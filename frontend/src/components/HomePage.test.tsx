@@ -25,7 +25,7 @@ describe('HomePage', () => {
 
   it('renders PlanForm without crashing', () => {
     renderWithProviders(<HomePage />)
-    expect(screen.getByRole('heading', { name: 'ユーザ登録' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'プラン条件' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'プランを生成' })).toBeInTheDocument()
   })
 
@@ -37,7 +37,7 @@ describe('HomePage', () => {
 
   it('does not show result section before form submission', () => {
     renderWithProviders(<HomePage />)
-    expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument()
+    expect(screen.queryByText('JSONダウンロード')).not.toBeInTheDocument()
   })
 
   describe('after successful plan generation', () => {
@@ -206,7 +206,7 @@ describe('HomePage', () => {
         await screen.findByText('エラー: API error 503: Service Unavailable'),
       ).toBeInTheDocument()
       // Assert no result section
-      expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument()
+      expect(screen.queryByText('JSONダウンロード')).not.toBeInTheDocument()
 
       // Retry with success
       const retryResult = {
