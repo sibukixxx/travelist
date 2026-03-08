@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HomePage } from './HomePage'
@@ -25,7 +25,7 @@ describe('HomePage', () => {
 
   it('renders PlanForm without crashing', () => {
     renderWithProviders(<HomePage />)
-    expect(screen.getByRole('heading', { name: '旅の計画を、もっと楽しく' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'プラン条件' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'プランを生成' })).toBeInTheDocument()
   })
 
@@ -37,8 +37,7 @@ describe('HomePage', () => {
 
   it('does not show result section before form submission', () => {
     renderWithProviders(<HomePage />)
-    // Hero and registration headings exist, but no itinerary title
-    expect(screen.queryByText('京都3日間の旅')).not.toBeInTheDocument()
+    expect(screen.queryByText('JSONダウンロード')).not.toBeInTheDocument()
   })
 
   describe('after successful plan generation', () => {
@@ -108,8 +107,8 @@ describe('HomePage', () => {
         expect(screen.getByText(/Day 1/)).toBeInTheDocument()
       })
       expect(screen.getByText('金閣寺')).toBeInTheDocument()
-      expect(screen.getByText(/09:00 - 10:30/)).toBeInTheDocument()
-      expect(screen.getByText('500円', { selector: '.timeline-cost' })).toBeInTheDocument()
+      expect(screen.getByText(/09:00–10:30/)).toBeInTheDocument()
+      expect(screen.getByText('(500円)')).toBeInTheDocument()
       expect(screen.getByText(/朝一番がおすすめ/)).toBeInTheDocument()
     })
 
@@ -121,7 +120,7 @@ describe('HomePage', () => {
       await submitFormWithDefaults(user)
 
       await waitFor(() => {
-        expect(screen.getByText('500円', { selector: '.total-cost' })).toBeInTheDocument()
+        expect(screen.getByText('500円')).toBeInTheDocument()
       })
     })
   })
@@ -206,8 +205,8 @@ describe('HomePage', () => {
       expect(
         await screen.findByText('エラー: API error 503: Service Unavailable'),
       ).toBeInTheDocument()
-      // Assert no itinerary result section
-      expect(screen.queryByText('京都3日間の旅')).not.toBeInTheDocument()
+      // Assert no result section
+      expect(screen.queryByText('JSONダウンロード')).not.toBeInTheDocument()
 
       // Retry with success
       const retryResult = {

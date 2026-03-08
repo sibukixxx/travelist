@@ -2,28 +2,19 @@ import { useRef, useState } from 'react'
 import { PlanForm } from './PlanForm'
 import { BudgetSummaryDisplay } from './BudgetSummary'
 import { ResultActions } from './ResultActions'
-import { UserRegistrationForm } from './UserRegistrationForm'
 import type { GenerateResult } from '../types/itinerary'
-
-const travelModeLabels: Record<string, string> = {
-  walk: '徒歩',
-  train: '電車',
-  bus: 'バス',
-  taxi: 'タクシー',
-  driving: '車',
-}
-
-const travelModeIcons: Record<string, string> = {
-  walk: '\u{1F6B6}',
-  train: '\u{1F683}',
-  bus: '\u{1F68C}',
-  taxi: '\u{1F695}',
-  driving: '\u{1F697}',
-}
 
 export function HomePage() {
   const [result, setResult] = useState<GenerateResult | null>(null)
   const formRef = useRef<HTMLDivElement>(null)
+  const resultRef = useRef<HTMLDivElement>(null)
+
+  const handleResult = (data: GenerateResult) => {
+    setResult(data)
+    setTimeout(() => {
+      resultRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, 100)
+  }
 
   const handleRegenerate = () => {
     formRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -31,46 +22,26 @@ export function HomePage() {
 
   return (
     <div>
-      {/* Hero */}
-      <section className="hero">
-        <div className="hero-inner">
-          <h2>旅の計画を、もっと楽しく</h2>
-          <p>行き先と日程を入力するだけで、あなただけの旅行プランを提案します。</p>
-          <div className="hero-stats">
-            <div className="hero-stat">
-              <span className="hero-stat-value">100+</span>
-              <span className="hero-stat-label">観光スポット</span>
-            </div>
-            <div className="hero-stat">
-              <span className="hero-stat-value">3min</span>
-              <span className="hero-stat-label">プラン生成</span>
-            </div>
-            <div className="hero-stat">
-              <span className="hero-stat-value">Free</span>
-              <span className="hero-stat-label">利用料金</span>
-            </div>
-          </div>
+      {!result && (
+        <div className="hero">
+          <h1 className="hero-title">旅の計画を、もっと楽しく</h1>
+          <p className="hero-subtitle">
+            行き先と日程を入れるだけで、あなたにぴったりの旅プランをご提案します
+          </p>
         </div>
-      </section>
+      )}
 
-      {/* Builder */}
-      <section className="builder-section" ref={formRef}>
-        <PlanForm onResult={setResult} />
-      </section>
+      <div ref={formRef} className="card card-accent" style={{ marginBottom: '2rem' }}>
+        <h2 className="section-title">プラン条件</h2>
+        <PlanForm onResult={handleResult} />
+      </div>
 
-      {/* Results */}
       {result && (
-        <section className="result">
-          <div className="result-hero">
-            <h2>{result.itinerary.title}</h2>
-            <div className="result-meta">
-              <span>{result.itinerary.destination}</span>
-              <span>{result.itinerary.start_date} — {result.itinerary.end_date}</span>
-              <span>{result.itinerary.days.length}日間</span>
-            </div>
+        <div ref={resultRef} className="result">
+          <div className="result-header">
+            <h2 className="result-title">{result.itinerary.title}</h2>
+            <ResultActions result={result} onRegenerate={handleRegenerate} />
           </div>
-
-          <ResultActions result={result} onRegenerate={handleRegenerate} />
 
           {result.violations.length > 0 && (
             <div className="violations">
@@ -96,46 +67,19 @@ export function HomePage() {
             )
             return (
               <div key={day.day_number} className="day-plan">
-                <div className="day-header">
-                  <div className="day-badge">{day.day_number}</div>
-                  <div className="day-header-text">
-                    <h3>Day {day.day_number}</h3>
-                    <span className="day-date">{day.date}</span>
-                  </div>
-                </div>
-                <div className="timeline">
+                <h3>Day {day.day_number} &mdash; {day.date}</h3>
+                <ul>
                   {day.activities.map((act) => (
-                    <div key={act.order} className="timeline-item">
-                      <span className="timeline-time">
-                        {act.start_time} — {act.end_time}
-                      </span>
-                      <div>
-                        <span className="timeline-place">
-                          {act.place?.name ?? act.place_id}
-                        </span>
-                        {act.estimated_cost_yen > 0 && (
-                          <span className="timeline-cost">
-                            {act.estimated_cost_yen.toLocaleString('ja-JP')}円
-                          </span>
-                        )}
-                      </div>
-                      {act.note && (
-                        <span className="timeline-note">{act.note}</span>
+                    <li key={act.order}>
+                      <strong>{act.start_time}–{act.end_time}</strong>{' '}
+                      {act.place?.name ?? act.place_id}
+                      {act.estimated_cost_yen > 0 && (
+                        <span className="cost"> ({act.estimated_cost_yen.toLocaleString('ja-JP')}円)</span>
                       )}
-                      {act.travel_from_prev && (
-                        <div className="timeline-travel">
-                          <span className="timeline-travel-icon">
-                            {travelModeIcons[act.travel_from_prev.mode] ?? ''}
-                          </span>
-                          <span>
-                            {travelModeLabels[act.travel_from_prev.mode] ?? act.travel_from_prev.mode}
-                            {' '}{act.travel_from_prev.duration_min}分
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                      {act.note && <span className="note"> — {act.note}</span>}
+                    </li>
                   ))}
-                </div>
+                </ul>
                 {dayCost && dayCost.cost_yen > 0 && (
                   <p className="day-cost-subtotal">
                     小計: {dayCost.cost_yen.toLocaleString('ja-JP')}円
@@ -144,11 +88,8 @@ export function HomePage() {
               </div>
             )
           })}
-        </section>
+        </div>
       )}
-
-      {/* Registration CTA */}
-      <UserRegistrationForm />
     </div>
   )
 }

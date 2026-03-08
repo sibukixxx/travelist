@@ -67,8 +67,6 @@ export function PlanForm({ onResult }: PlanFormProps) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="plan-form">
-      <h3 className="plan-form-title">プランを作成</h3>
-
       <div className="form-group">
         <label htmlFor="destination">目的地</label>
         <input
@@ -121,7 +119,7 @@ export function PlanForm({ onResult }: PlanFormProps) {
 
       <div className="form-row">
         <div className="form-group">
-          <label htmlFor="budget">予算</label>
+          <label htmlFor="budget">予算レベル</label>
           <select id="budget" {...register('budget')}>
             <option value="budget">節約</option>
             <option value="moderate">普通</option>
@@ -151,6 +149,7 @@ export function PlanForm({ onResult }: PlanFormProps) {
       </div>
 
       <button type="submit" disabled={mutation.isPending}>
+        {mutation.isPending && <span className="spinner" />}
         {mutation.isPending ? 'プラン生成中...' : 'プランを生成'}
       </button>
 
