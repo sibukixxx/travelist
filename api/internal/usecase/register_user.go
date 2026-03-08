@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"time"
+
 	"github.com/sibukixxx/travelist/api/internal/apperror"
 	"github.com/sibukixxx/travelist/api/internal/domain"
-	"github.com/sibukixxx/travelist/api/internal/infra/clock"
 )
 
 // UserRepo is the repository interface used by user usecases.
@@ -38,11 +39,11 @@ type RegisterResult struct {
 type UserRegistrar struct {
 	users UserRepo
 	email EmailSender
-	clock clock.Clock
+	clock domain.Clock
 }
 
 // NewUserRegistrar creates a new UserRegistrar.
-func NewUserRegistrar(users UserRepo, email EmailSender, clk clock.Clock) *UserRegistrar {
+func NewUserRegistrar(users UserRepo, email EmailSender, clk domain.Clock) *UserRegistrar {
 	return &UserRegistrar{users: users, email: email, clock: clk}
 }
 
@@ -78,7 +79,7 @@ func (r *UserRegistrar) Register(ctx context.Context, req RegisterRequest) (*Reg
 	}
 
 	now := r.clock.Now()
-	expires := now.Add(24 * 60 * 60 * 1e9) // 24 hours
+	expires := now.Add(24 * time.Hour)
 
 	user := &domain.User{
 		ID:                domain.NewUserID(),

@@ -2,11 +2,6 @@ package clock
 
 import "time"
 
-// Clock is an interface for getting the current time (testable).
-type Clock interface {
-	Now() time.Time
-}
-
 // RealClock uses the system clock.
 type RealClock struct{}
 

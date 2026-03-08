@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -9,13 +10,18 @@ import (
 	"github.com/sibukixxx/travelist/api/internal/usecase"
 )
 
+// PlanGeneratorInterface is the interface for plan generation.
+type PlanGeneratorInterface interface {
+	Generate(ctx context.Context, req domain.PlanRequest) (*usecase.GenerateResult, error)
+}
+
 // PlanHandler handles HTTP requests for itinerary planning.
 type PlanHandler struct {
-	generator *usecase.PlanGenerator
+	generator PlanGeneratorInterface
 }
 
 // NewPlanHandler creates a new PlanHandler.
-func NewPlanHandler(generator *usecase.PlanGenerator) *PlanHandler {
+func NewPlanHandler(generator PlanGeneratorInterface) *PlanHandler {
 	return &PlanHandler{generator: generator}
 }
 

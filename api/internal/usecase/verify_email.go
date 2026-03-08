@@ -4,17 +4,17 @@ import (
 	"context"
 
 	"github.com/sibukixxx/travelist/api/internal/apperror"
-	"github.com/sibukixxx/travelist/api/internal/infra/clock"
+	"github.com/sibukixxx/travelist/api/internal/domain"
 )
 
 // EmailVerifier handles email verification.
 type EmailVerifier struct {
 	users UserRepo
-	clock clock.Clock
+	clock domain.Clock
 }
 
 // NewEmailVerifier creates a new EmailVerifier.
-func NewEmailVerifier(users UserRepo, clk clock.Clock) *EmailVerifier {
+func NewEmailVerifier(users UserRepo, clk domain.Clock) *EmailVerifier {
 	return &EmailVerifier{users: users, clock: clk}
 }
 

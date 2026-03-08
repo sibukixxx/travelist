@@ -7,16 +7,14 @@ import (
 
 	"github.com/sibukixxx/travelist/api/internal/domain"
 	"github.com/sibukixxx/travelist/api/internal/infra/clients"
-	"github.com/sibukixxx/travelist/api/internal/infra/clock"
-	"github.com/sibukixxx/travelist/api/internal/infra/repo"
 )
 
 // PlanGenerator handles the itinerary generation workflow.
 type PlanGenerator struct {
 	places PlacesClientInterface
 	llm    LLMClientInterface
-	repo   repo.ItineraryRepository
-	clock  clock.Clock
+	repo   domain.ItineraryRepository
+	clock  domain.Clock
 }
 
 // PlacesClientInterface is used by the usecase layer.
@@ -29,8 +27,8 @@ type LLMClientInterface = clients.LLMClient
 func NewPlanGenerator(
 	places PlacesClientInterface,
 	llm LLMClientInterface,
-	repository repo.ItineraryRepository,
-	clk clock.Clock,
+	repository domain.ItineraryRepository,
+	clk domain.Clock,
 ) *PlanGenerator {
 	return &PlanGenerator{
 		places: places,
@@ -83,14 +81,15 @@ func (pg *PlanGenerator) Generate(ctx context.Context, req domain.PlanRequest) (
 	}
 
 	// 5. Convert LLM response to domain model
+	now := pg.clock.Now()
 	itinerary := &domain.Itinerary{
-		ID:          generateID(),
+		ID:          fmt.Sprintf("itn_%d", now.UnixNano()),
 		Title:       fmt.Sprintf("%s %d日間の旅", req.Destination, req.NumDays),
 		Destination: req.Destination,
 		StartDate:   startDate,
 		EndDate:     startDate.AddDate(0, 0, req.NumDays-1),
-		CreatedAt:   pg.clock.Now(),
-		UpdatedAt:   pg.clock.Now(),
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 
 	placeByName := make(map[string]domain.Place)
@@ -143,8 +142,4 @@ func (pg *PlanGenerator) Generate(ctx context.Context, req domain.PlanRequest) (
 		Violations:    allViolations,
 		BudgetSummary: budgetSummary,
 	}, nil
-}
-
-func generateID() string {
-	return fmt.Sprintf("itn_%d", time.Now().UnixNano())
 }
