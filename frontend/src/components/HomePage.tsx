@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { PlanForm } from './PlanForm'
 import { BudgetSummaryDisplay } from './BudgetSummary'
 import { ResultActions } from './ResultActions'
+import { UserRegistrationForm } from './UserRegistrationForm'
 import type { GenerateResult } from '../types/itinerary'
 
 const travelModeLabels: Record<string, string> = {
@@ -30,9 +31,34 @@ export function HomePage() {
 
   return (
     <div>
-      <div ref={formRef}>
+      {/* Hero */}
+      <section className="hero">
+        <div className="hero-inner">
+          <h2>旅の計画を、もっと楽しく</h2>
+          <p>行き先と日程を入力するだけで、あなただけの旅行プランを提案します。</p>
+          <div className="hero-stats">
+            <div className="hero-stat">
+              <span className="hero-stat-value">100+</span>
+              <span className="hero-stat-label">観光スポット</span>
+            </div>
+            <div className="hero-stat">
+              <span className="hero-stat-value">3min</span>
+              <span className="hero-stat-label">プラン生成</span>
+            </div>
+            <div className="hero-stat">
+              <span className="hero-stat-value">Free</span>
+              <span className="hero-stat-label">利用料金</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Builder */}
+      <div className="builder-section" ref={formRef}>
         <PlanForm onResult={setResult} />
       </div>
+
+      {/* Results */}
       {result && (
         <div className="result">
           <div className="result-hero">
@@ -120,6 +146,9 @@ export function HomePage() {
           })}
         </div>
       )}
+
+      {/* Registration CTA */}
+      <UserRegistrationForm />
     </div>
   )
 }
