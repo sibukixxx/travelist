@@ -54,18 +54,18 @@ export function HomePage() {
       </section>
 
       {/* Builder */}
-      <div className="builder-section" ref={formRef}>
+      <section className="builder-section" ref={formRef}>
         <PlanForm onResult={setResult} />
-      </div>
+      </section>
 
       {/* Results */}
       {result && (
-        <div className="result">
+        <section className="result">
           <div className="result-hero">
             <h2>{result.itinerary.title}</h2>
             <div className="result-meta">
               <span>{result.itinerary.destination}</span>
-              <span>{result.itinerary.start_date} - {result.itinerary.end_date}</span>
+              <span>{result.itinerary.start_date} — {result.itinerary.end_date}</span>
               <span>{result.itinerary.days.length}日間</span>
             </div>
           </div>
@@ -107,7 +107,7 @@ export function HomePage() {
                   {day.activities.map((act) => (
                     <div key={act.order} className="timeline-item">
                       <span className="timeline-time">
-                        {act.start_time} - {act.end_time}
+                        {act.start_time} — {act.end_time}
                       </span>
                       <div>
                         <span className="timeline-place">
@@ -144,7 +144,7 @@ export function HomePage() {
               </div>
             )
           })}
-        </div>
+        </section>
       )}
 
       {/* Registration CTA */}
