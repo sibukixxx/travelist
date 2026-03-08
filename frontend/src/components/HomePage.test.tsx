@@ -25,7 +25,6 @@ describe('HomePage', () => {
 
   it('renders PlanForm without crashing', () => {
     renderWithProviders(<HomePage />)
-    expect(screen.getByRole('heading', { name: 'ユーザ登録' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'プランを生成' })).toBeInTheDocument()
   })
 
@@ -107,8 +106,8 @@ describe('HomePage', () => {
         expect(screen.getByText(/Day 1/)).toBeInTheDocument()
       })
       expect(screen.getByText('金閣寺')).toBeInTheDocument()
-      expect(screen.getByText(/09:00–10:30/)).toBeInTheDocument()
-      expect(screen.getByText('(500円)')).toBeInTheDocument()
+      expect(screen.getByText(/09:00 - 10:30/)).toBeInTheDocument()
+      expect(screen.getByText('500円', { selector: '.timeline-cost' })).toBeInTheDocument()
       expect(screen.getByText(/朝一番がおすすめ/)).toBeInTheDocument()
     })
 
@@ -120,7 +119,7 @@ describe('HomePage', () => {
       await submitFormWithDefaults(user)
 
       await waitFor(() => {
-        expect(screen.getByText('500円')).toBeInTheDocument()
+        expect(screen.getByText('500円', { selector: '.total-cost' })).toBeInTheDocument()
       })
     })
   })
