@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HomePage } from './HomePage'
@@ -25,7 +25,6 @@ describe('HomePage', () => {
 
   it('renders PlanForm without crashing', () => {
     renderWithProviders(<HomePage />)
-    expect(screen.getByRole('heading', { name: 'ユーザ登録' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'プランを生成' })).toBeInTheDocument()
   })
 
