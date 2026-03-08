@@ -14,13 +14,13 @@ export function BudgetSummaryDisplay({ summary, violations }: BudgetSummaryDispl
 
   return (
     <div className="budget-summary">
-      <h3>予算サマリー</h3>
-      <p className="total-cost">
-        合計: <strong>{formatYen(summary.total_cost_yen)}</strong>
-      </p>
-      {budgetExceeded && (
-        <p className="budget-over">予算超過: 設定した予算を超えています</p>
-      )}
+      <div>
+        <h3>予算サマリー</h3>
+        <p className="total-cost">{formatYen(summary.total_cost_yen)}</p>
+        {budgetExceeded && (
+          <p className="budget-over">予算超過</p>
+        )}
+      </div>
     </div>
   )
 }
