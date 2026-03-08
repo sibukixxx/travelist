@@ -342,12 +342,29 @@ button {
   padding: 0 var(--space-xl);
 }
 
-.result > h2 {
+.result-hero {
+  text-align: center;
+  margin-bottom: var(--space-xl);
+}
+
+.result-hero h2 {
   font-family: var(--font-serif);
   font-size: 1.75rem;
   color: var(--color-teal-800);
-  margin-bottom: var(--space-lg);
-  text-align: center;
+  margin-bottom: var(--space-sm);
+}
+
+.result-meta {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-lg);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.result-meta span {
+  display: inline-flex;
+  align-items: center;
 }
 
 /* ─── Result actions ─── */
@@ -403,14 +420,10 @@ button {
 }
 
 .total-cost {
-  font-size: 1rem;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.total-cost strong {
   font-size: 1.5rem;
+  font-weight: 700;
   color: var(--accent);
+  margin: 0;
 }
 
 .budget-over {
@@ -435,24 +448,48 @@ button {
   box-shadow: var(--shadow-md);
 }
 
-.day-plan h3 {
-  font-family: var(--font-serif);
-  font-size: 1.1rem;
-  color: var(--accent);
+.day-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
   padding-bottom: var(--space-md);
   margin-bottom: var(--space-md);
   border-bottom: 2px solid var(--color-sand-100);
 }
 
-.day-plan ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  position: relative;
+.day-badge {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--color-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
 }
 
-/* Timeline line */
-.day-plan ul::before {
+.day-header-text h3 {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  color: var(--accent);
+  margin: 0;
+}
+
+.day-date {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* Timeline */
+.timeline {
+  position: relative;
+  padding-left: var(--space-xl);
+}
+
+.timeline::before {
   content: '';
   position: absolute;
   left: 3px;
@@ -462,19 +499,18 @@ button {
   background: var(--color-sand-200);
 }
 
-.day-plan li {
+.timeline-item {
   position: relative;
-  padding: var(--space-sm) 0 var(--space-sm) var(--space-xl);
-  border-bottom: none;
+  padding: var(--space-sm) 0;
   font-size: 0.95rem;
   line-height: 1.5;
 }
 
 /* Timeline dot */
-.day-plan li::before {
+.timeline-item::before {
   content: '';
   position: absolute;
-  left: 0;
+  left: calc(-1 * var(--space-xl) + 0px);
   top: 0.85rem;
   width: 8px;
   height: 8px;
@@ -484,22 +520,49 @@ button {
   box-shadow: 0 0 0 2px var(--highlight);
 }
 
-.day-plan li strong {
+.timeline-time {
   color: var(--accent);
   font-size: 0.85rem;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+  display: block;
+  margin-bottom: 2px;
 }
 
-.cost {
+.timeline-place {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.timeline-cost {
   color: var(--highlight);
   font-size: 0.85rem;
   font-weight: 500;
+  margin-left: var(--space-sm);
 }
 
-.note {
+.timeline-note {
+  display: block;
   color: var(--text-muted);
   font-size: 0.85rem;
   font-style: italic;
+  margin-top: 2px;
+}
+
+.timeline-travel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+  padding: 2px var(--space-sm);
+  background: var(--color-sand-50);
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.timeline-travel-icon {
+  font-size: 0.9rem;
 }
 
 .day-cost-subtotal {
