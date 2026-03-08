@@ -10,7 +10,7 @@ function formatYen(amount: number): string {
 }
 
 export function BudgetSummaryDisplay({ summary, violations }: BudgetSummaryDisplayProps) {
-  const budgetExceeded = violations.some((v) => v.type === 'budget_exceeded')
+  const budgetExceeded = violations?.some((v) => v.type === 'budget_exceeded') ?? false
 
   return (
     <div className="budget-summary">

@@ -43,7 +43,7 @@ export function HomePage() {
             <ResultActions result={result} onRegenerate={handleRegenerate} />
           </div>
 
-          {result.violations.length > 0 && (
+          {result.violations?.length > 0 && (
             <div className="violations">
               <h3>注意事項</h3>
               <ul>

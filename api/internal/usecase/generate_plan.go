@@ -121,7 +121,7 @@ func (pg *PlanGenerator) Generate(ctx context.Context, req domain.PlanRequest) (
 	}
 
 	// 6. Validate with rule-based logic
-	var allViolations []domain.Violation
+	allViolations := make([]domain.Violation, 0)
 	for _, day := range itinerary.Days {
 		violations := domain.ValidateDayPlan(day, req.Constraint)
 		allViolations = append(allViolations, violations...)
