@@ -4,6 +4,22 @@ import { BudgetSummaryDisplay } from './BudgetSummary'
 import { ResultActions } from './ResultActions'
 import type { GenerateResult } from '../types/itinerary'
 
+const travelModeLabels: Record<string, string> = {
+  walk: '徒歩',
+  train: '電車',
+  bus: 'バス',
+  taxi: 'タクシー',
+  driving: '車',
+}
+
+const travelModeIcons: Record<string, string> = {
+  walk: '\u{1F6B6}',
+  train: '\u{1F683}',
+  bus: '\u{1F68C}',
+  taxi: '\u{1F695}',
+  driving: '\u{1F697}',
+}
+
 export function HomePage() {
   const [result, setResult] = useState<GenerateResult | null>(null)
   const formRef = useRef<HTMLDivElement>(null)
@@ -19,8 +35,17 @@ export function HomePage() {
       </div>
       {result && (
         <div className="result">
-          <h2>{result.itinerary.title}</h2>
+          <div className="result-hero">
+            <h2>{result.itinerary.title}</h2>
+            <div className="result-meta">
+              <span>{result.itinerary.destination}</span>
+              <span>{result.itinerary.start_date} - {result.itinerary.end_date}</span>
+              <span>{result.itinerary.days.length}日間</span>
+            </div>
+          </div>
+
           <ResultActions result={result} onRegenerate={handleRegenerate} />
+
           {result.violations.length > 0 && (
             <div className="violations">
               <h3>注意事項</h3>
@@ -31,31 +56,60 @@ export function HomePage() {
               </ul>
             </div>
           )}
+
           {result.budget_summary && (
             <BudgetSummaryDisplay
               summary={result.budget_summary}
               violations={result.violations}
             />
           )}
+
           {result.itinerary.days.map((day) => {
             const dayCost = result.budget_summary?.daily_costs.find(
               (dc) => dc.day_number === day.day_number
             )
             return (
               <div key={day.day_number} className="day-plan">
-                <h3>Day {day.day_number} - {day.date}</h3>
-                <ul>
+                <div className="day-header">
+                  <div className="day-badge">{day.day_number}</div>
+                  <div className="day-header-text">
+                    <h3>Day {day.day_number}</h3>
+                    <span className="day-date">{day.date}</span>
+                  </div>
+                </div>
+                <div className="timeline">
                   {day.activities.map((act) => (
-                    <li key={act.order}>
-                      <strong>{act.start_time}–{act.end_time}</strong>{' '}
-                      {act.place?.name ?? act.place_id}
-                      {act.estimated_cost_yen > 0 && (
-                        <span className="cost"> ({act.estimated_cost_yen.toLocaleString('ja-JP')}円)</span>
+                    <div key={act.order} className="timeline-item">
+                      <span className="timeline-time">
+                        {act.start_time} - {act.end_time}
+                      </span>
+                      <div>
+                        <span className="timeline-place">
+                          {act.place?.name ?? act.place_id}
+                        </span>
+                        {act.estimated_cost_yen > 0 && (
+                          <span className="timeline-cost">
+                            {act.estimated_cost_yen.toLocaleString('ja-JP')}円
+                          </span>
+                        )}
+                      </div>
+                      {act.note && (
+                        <span className="timeline-note">{act.note}</span>
                       )}
-                      {act.note && <span className="note"> — {act.note}</span>}
-                    </li>
+                      {act.travel_from_prev && (
+                        <div className="timeline-travel">
+                          <span className="timeline-travel-icon">
+                            {travelModeIcons[act.travel_from_prev.mode] ?? ''}
+                          </span>
+                          <span>
+                            {travelModeLabels[act.travel_from_prev.mode] ?? act.travel_from_prev.mode}
+                            {' '}{act.travel_from_prev.duration_min}分
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   ))}
-                </ul>
+                </div>
                 {dayCost && dayCost.cost_yen > 0 && (
                   <p className="day-cost-subtotal">
                     小計: {dayCost.cost_yen.toLocaleString('ja-JP')}円
